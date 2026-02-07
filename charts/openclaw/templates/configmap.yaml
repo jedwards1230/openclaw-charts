@@ -5,46 +5,9 @@ metadata:
   labels:
     {{- include "openclaw.labels" . | nindent 4 }}
 data:
+  {{- $gatewayAuth := dict "mode" .Values.gateway.auth.mode "token" "${GATEWAY_AUTH_TOKEN}" }}
+  {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
+  {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
+  {{- $merged := merge (dict "gateway" $gateway) .Values.config }}
   openclaw.json: |
-    {
-      "gateway": {
-        "bind": {{ .Values.gateway.bind | quote }},
-        "port": {{ .Values.gateway.port }},
-        "auth": {
-          "mode": {{ .Values.gateway.auth.mode | quote }},
-          "token": "${GATEWAY_AUTH_TOKEN}"
-        },
-        "controlUi": {
-          "allowInsecureAuth": {{ .Values.gateway.controlUi.allowInsecureAuth }}
-        }
-      },
-      "agents": {
-        "defaults": {
-          "model": {
-            "primary": {{ .Values.agents.defaults.model.primary | quote }}
-          },
-          "workspace": {{ .Values.agents.defaults.workspace | quote }}
-        }
-      },
-      "channels": {
-        "discord": {
-          "enabled": {{ .Values.discord.enabled }},
-          "token": "${DISCORD_BOT_TOKEN}",
-          "commands": {
-            "native": {{ .Values.discord.commands.native }}
-          },
-          "dm": {
-            "enabled": {{ .Values.discord.dm.enabled }},
-            "policy": {{ .Values.discord.dm.policy | quote }},
-            "allowFrom": {{ .Values.discord.dm.allowFrom | toJson }}
-          }
-          {{- if .Values.discord.guilds }},
-          "guilds": {{ .Values.discord.guilds | toJson }}
-          {{- end }}
-        }
-      },
-      "tools": {
-        "allow": {{ .Values.tools.allow | toJson }},
-        "deny": {{ .Values.tools.deny | toJson }}
-      }
-    }
+{{ mustToPrettyJson $merged | indent 4 }}

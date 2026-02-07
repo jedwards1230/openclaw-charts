@@ -10,7 +10,7 @@ replicaCount: 1
 strategy:
   type: Recreate
 
-# -- OpenClaw gateway configuration
+# -- OpenClaw gateway configuration (templated into openclaw.json)
 gateway:
   port: 18789
   bind: "lan"
@@ -19,48 +19,10 @@ gateway:
   controlUi:
     allowInsecureAuth: true
 
-# -- Agent defaults
-agents:
-  defaults:
-    model:
-      primary: "anthropic/claude-sonnet-4-5"
-    workspace: "/home/node/.openclaw/workspace"
-
-# -- Discord channel configuration
-discord:
-  enabled: true
-  commands:
-    native: true
-  dm:
-    enabled: true
-    policy: "pairing"
-    allowFrom: []
-  guilds: {}
-  #   "1304648203605377147":
-  #     requireMention: true
-  #     channels:
-  #       "*":
-  #         allow: true
-  #         requireMention: true
-  #       "lilclaw-home":
-  #         allow: true
-  #         requireMention: false
-
-# -- Tool permission lists
-tools:
-  allow:
-    - read
-    - write
-    - edit
-    - exec
-    - web_search
-    - web_fetch
-  deny:
-    - apply_patch
-    - browser
-    - canvas
-    - gateway
-    - process
+# -- Freeform app config (merged with gateway into openclaw.json)
+# Add any top-level openclaw.json keys here (agents, channels, tools, etc.)
+# These are serialized to JSON as-is — no chart update needed for config changes.
+config: {}
 
 # -- Git identity for commits
 git:
