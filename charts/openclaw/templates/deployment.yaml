@@ -18,6 +18,9 @@ spec:
         app.kubernetes.io/part-of: openclaw
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.webhookd.enabled }}
+        checksum/webhookd: {{ include (print $.Template.BasePath "/configmap-webhookd.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

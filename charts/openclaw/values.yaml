@@ -140,7 +140,7 @@ probes:
 
 # -- Webhookd sidecar: GitHub webhook signature verification proxy
 # Receives GitHub webhook POSTs, verifies X-Hub-Signature-256 HMAC,
-# and forwards to openclaw's /hooks/agent endpoint with bearer auth.
+# and forwards to openclaw's /hooks/agent endpoint using the x-openclaw-token header.
 webhookd:
   enabled: false
   image:
