@@ -9,8 +9,7 @@ on:
     inputs:
       openclaw_version:
         description: "OpenClaw version tag (e.g. v2026.2.2)"
-        required: false
-        default: "v2026.2.2"
+        required: true
 
 env:
   REGISTRY: ghcr.io
@@ -50,7 +49,16 @@ jobs:
       - name: Determine OpenClaw version
         id: version
         run: |
-          VERSION="${{ github.event.inputs.openclaw_version || 'v2026.2.2' }}"
+          if [ -n "${{ github.event.inputs.openclaw_version }}" ]; then
+            VERSION="${{ github.event.inputs.openclaw_version }}"
+          else
+            # Read from Dockerfile ARG as source of truth
+            VERSION=$(grep '^ARG OPENCLAW_VERSION=' Dockerfile | cut -d= -f2)
+            if [ -z "$VERSION" ]; then
+              echo "::error::Could not determine OPENCLAW_VERSION from Dockerfile"
+              exit 1
+            fi
+          fi
           echo "openclaw_version=${VERSION}" >> $GITHUB_OUTPUT
           echo "OpenClaw version: ${VERSION}"
 
