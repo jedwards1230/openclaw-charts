@@ -172,11 +172,11 @@ webhookd:
       cpu: 100m
       memory: 64Mi
 
-# -- Pod Security Standards labels
-podLabels:
-  pod-security.kubernetes.io/enforce: baseline
-  pod-security.kubernetes.io/audit: restricted
-  pod-security.kubernetes.io/warn: restricted
+# -- Additional pod labels
+# Note: Pod Security Admission (PSA) labels (pod-security.kubernetes.io/*)
+# must be applied to the Namespace, not individual Pods. Configure them on
+# the namespace outside this chart if needed.
+podLabels: {}
 
 # -- Network policy configuration
 networkPolicy:

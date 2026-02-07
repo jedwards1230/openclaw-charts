@@ -10,8 +10,8 @@ This document describes the security hardening measures applied to the OpenClaw 
 
 **Pod-level security:**
 - ✅ `runAsNonRoot: true` - Enforces container cannot run as root
-- ✅ `runAsUser: 568` / `runAsGroup: 568` - Consistent non-privileged user
-- ✅ `fsGroup: 568` - Ensures volume permissions work correctly
+- ✅ `runAsUser: 1000` / `runAsGroup: 1000` - Consistent non-privileged user
+- ✅ `fsGroup: 1000` - Ensures volume permissions work correctly
 - ✅ `seccompProfile: RuntimeDefault` - Reduces syscall attack surface
 
 **Container-level security:**
@@ -28,10 +28,14 @@ This document describes the security hardening measures applied to the OpenClaw 
 
 ### 3. Pod Security Standards
 
-Pod labels applied for Kubernetes Pod Security Admission:
+**Note:** Pod Security Admission (PSA) labels must be applied to the **namespace**, not individual pods. 
+
+Recommended namespace labels for PSA:
 - `pod-security.kubernetes.io/enforce: baseline` - Enforces baseline security
 - `pod-security.kubernetes.io/audit: restricted` - Audits against restricted standard
 - `pod-security.kubernetes.io/warn: restricted` - Warns about restricted violations
+
+Apply to namespace: `kubectl label namespace <namespace> pod-security.kubernetes.io/enforce=baseline`
 
 ### 4. Network Segmentation
 
@@ -50,9 +54,11 @@ Pod labels applied for Kubernetes Pod Security Admission:
 
 ### 6. Authentication & Authorization
 
-- ⚠️ `allowInsecureAuth: false` - Changed from `true` (requires proper auth flow)
+- ⚠️ `allowInsecureAuth: true` (default) - **Should be set to `false` in production deployments** to enforce proper authentication flow
 - ✅ Gateway uses token-based authentication
 - ✅ Ingress protected by Traefik middleware (LAN-only access)
+
+**Recommendation:** Set `gateway.controlUi.allowInsecureAuth: false` in your Helmfile/values to require proper authentication.
 
 ## Known Limitations
 

@@ -13,12 +13,12 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow ingress from Traefik/ingress controller
+    # Allow ingress from Traefik/ingress controller in kube-system namespace
     - from:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
-        - podSelector:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
             matchLabels:
               app.kubernetes.io/name: traefik
       ports:
@@ -26,30 +26,31 @@ spec:
           port: {{ .Values.gateway.port }}
     # Allow ingress from same namespace (for debugging, kubectl port-forward)
     - from:
-        - namespaceSelector:
-            matchLabels:
-              name: {{ .Release.Namespace }}
+        - podSelector: {}
       ports:
         - protocol: TCP
           port: {{ .Values.gateway.port }}
   egress:
-    # Allow DNS
+    # Allow DNS to kube-system
     - to:
         - namespaceSelector:
             matchLabels:
-              name: kube-system
+              kubernetes.io/metadata.name: kube-system
+          podSelector: {}
       ports:
         - protocol: UDP
           port: 53
     # Allow HTTPS to external APIs (Anthropic, Discord, GitHub, etc.)
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 443
     # Allow HTTP (for package registries, etc.)
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
       ports:
         - protocol: TCP
           port: 80
