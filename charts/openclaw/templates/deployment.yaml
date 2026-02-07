@@ -65,16 +65,6 @@ spec:
               value: {{ .Values.git.configGlobal | quote }}
             - name: NODE_OPTIONS
               value: {{ .Values.nodeOptions | quote }}
-            - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "openclaw.secretName" . }}
-                  key: ANTHROPIC_API_KEY
-            - name: GITHUB_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "openclaw.secretName" . }}
-                  key: GITHUB_TOKEN
             - name: GIT_AUTHOR_NAME
               value: {{ .Values.git.authorName | quote }}
             - name: GIT_AUTHOR_EMAIL
@@ -83,11 +73,9 @@ spec:
               value: {{ .Values.git.committerName | quote }}
             - name: GIT_COMMITTER_EMAIL
               value: {{ .Values.git.committerEmail | quote }}
-            - name: OPENCLAW_GATEWAY_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "openclaw.secretName" . }}
-                  key: GATEWAY_AUTH_TOKEN
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: gateway
               containerPort: {{ .Values.gateway.port }}

@@ -2,7 +2,7 @@ apiVersion: v2
 name: openclaw
 description: Custom OpenClaw deployment with GitHub CLI for Discord bot
 type: application
-version: 0.2.0
+version: 0.4.0
 appVersion: "2026.2.3"
 maintainers:
   - name: jedwards1230
