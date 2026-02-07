@@ -1,0 +1,67 @@
+name: Generate Container Docs
+
+on:
+  workflow_run:
+    workflows: ["Build Image"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/jedwards1230/openclaw:latest
+
+jobs:
+  generate:
+    name: Generate CONTAINER_TOOLS.md
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Pull image
+        run: docker pull "$IMAGE"
+
+      - name: Run Syft SBOM scan
+        run: syft scan "$IMAGE" -o json > /tmp/sbom.json
+
+      - name: Run Trivy vulnerability scan
+        run: trivy image "$IMAGE" --format json --scanners vuln --timeout 10m > /tmp/trivy.json
+
+      - name: Run runtime inventory
+        run: |
+          docker run --rm --entrypoint="" "$IMAGE" bash < scripts/runtime-inventory.sh > /tmp/runtime.md
+
+      - name: Generate CONTAINER_TOOLS.md
+        run: bash scripts/generate-container-docs.sh /tmp/sbom.json /tmp/trivy.json /tmp/runtime.md > CONTAINER_TOOLS.md
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet CONTAINER_TOOLS.md; then
+            git add CONTAINER_TOOLS.md
+            git commit -m "docs: update CONTAINER_TOOLS.md from CI
+
+          Auto-generated from Syft SBOM + Trivy scan + runtime inventory."
+            git push
+          else
+            echo "No changes to CONTAINER_TOOLS.md"
+          fi
