@@ -138,6 +138,26 @@ probes:
   liveness: {}
   readiness: {}
 
+# -- Webhookd sidecar: GitHub webhook signature verification proxy
+# Receives GitHub webhook POSTs, verifies X-Hub-Signature-256 HMAC,
+# and forwards to openclaw's /hooks/agent endpoint using the x-openclaw-token header.
+webhookd:
+  enabled: false
+  image:
+    repository: node
+    tag: "22-alpine"
+    pullPolicy: IfNotPresent
+  port: 8090
+  # -- Target path on openclaw gateway to forward verified webhooks to
+  targetPath: "/hooks/agent"
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
 nodeSelector:
   kubernetes.io/arch: amd64
 tolerations: []

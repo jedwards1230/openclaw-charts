@@ -11,5 +11,11 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: gateway
       protocol: TCP
+    {{- if .Values.webhookd.enabled }}
+    - name: webhookd
+      port: {{ .Values.webhookd.port }}
+      targetPort: webhookd
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "openclaw.selectorLabels" . | nindent 4 }}

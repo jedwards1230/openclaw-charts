@@ -28,6 +28,6 @@ spec:
               service:
                 name: {{ include "openclaw.fullname" $ }}
                 port:
-                  name: gateway
+                  name: {{ .servicePort | default "gateway" }}
 {{- end }}
 {{- end }}
