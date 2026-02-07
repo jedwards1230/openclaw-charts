@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/jedwards1230/openclaw
+  repository: ghcr.io/jedwards1230/openclaw-charts
   tag: latest
   pullPolicy: IfNotPresent
 
