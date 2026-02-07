@@ -41,7 +41,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 
 | Value | Description | Default |
 |-------|-------------|---------|
-| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw` (will change to `ghcr.io/jedwards1230/openclaw-charts` in PR #5) |
+| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw-charts` |
 | `image.tag` | Image tag | `latest` |
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |
