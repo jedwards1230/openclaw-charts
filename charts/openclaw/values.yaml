@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/jedwards1230/openclaw
+  repository: ghcr.io/jedwards1230/openclaw-charts
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -77,6 +77,26 @@ ingress:
   annotations: {}
   tls: []
 
+# -- Additional ingresses for separate access rules
+# Useful for exposing specific endpoints (e.g., webhooks) with different
+# security settings while keeping the main UI restricted to LAN-only access.
+#
+# Example: Expose /hooks endpoint publicly while main UI stays LAN-only
+# additionalIngresses:
+#   - name: webhook
+#     enabled: true
+#     host: openclaw.example.com
+#     path: /hooks
+#     pathType: Prefix
+#     annotations:
+#       traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+#       cert-manager.io/cluster-issuer: letsencrypt-prod
+#     tls:
+#       - hosts:
+#           - openclaw.example.com
+#         secretName: openclaw-webhook-tls
+additionalIngresses: []
+
 # -- Service configuration
 service:
   type: ClusterIP
@@ -104,6 +124,19 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+# -- Pod annotations (e.g., Velero backup hooks)
+podAnnotations: {}
+
+# -- Priority class name for scheduling priority
+priorityClassName: ""
+
+# -- Override default health probes (TCP socket on gateway port)
+# Set per-probe config to override. Omit or set to {} to use defaults.
+probes:
+  startup: {}
+  liveness: {}
+  readiness: {}
 
 nodeSelector:
   kubernetes.io/arch: amd64
