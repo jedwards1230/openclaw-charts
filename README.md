@@ -27,12 +27,12 @@ docker build --build-arg OPENCLAW_VERSION=v2026.2.2 -t openclaw .
 
 ## Helm Chart
 
-The chart is published as an OCI artifact to `oci://ghcr.io/jedwards1230/openclaw-charts/openclaw`.
+The chart is published as an OCI artifact to `oci://ghcr.io/jedwards1230/charts/openclaw`.
 
 ### Install
 
 ```bash
-helm install openclaw oci://ghcr.io/jedwards1230/openclaw-charts/openclaw \
+helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
   --namespace home-agent \
   --values my-values.yaml
 ```
@@ -41,7 +41,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/openclaw-charts/openclaw \
 
 | Value | Description | Default |
 |-------|-------------|---------|
-| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw-charts` |
+| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw` (will change to `ghcr.io/jedwards1230/openclaw-charts` in PR #5) |
 | `image.tag` | Image tag | `latest` |
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |
