@@ -1,10 +1,20 @@
-# OpenClaw
+# OpenClaw Charts
 
 Custom OpenClaw Docker image and Helm chart for deploying a Discord bot with GitHub CLI support.
 
+> **Note**: This is a customized build based on the upstream [openclaw/openclaw](https://github.com/openclaw/openclaw) project. It includes additional tooling and configuration for personal homelab deployments.
+
+## What's Different
+
+This customized build includes:
+
+- **GitHub CLI (`gh`)** pre-installed for seamless GitHub interactions
+- **Custom Helm chart** tailored for Kubernetes homelab deployments
+- **Personal homelab optimizations** including NFS storage support, 1Password integration, and multi-ingress routing
+
 ## Image
 
-Builds from the official [openclaw/openclaw](https://github.com/openclaw/openclaw) source with `gh` CLI added. Published to `ghcr.io/jedwards1230/openclaw`.
+Builds from the official [openclaw/openclaw](https://github.com/openclaw/openclaw) source with `gh` CLI added. Published to `ghcr.io/jedwards1230/openclaw-charts`.
 
 ### Building locally
 
@@ -31,7 +41,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 
 | Value | Description | Default |
 |-------|-------------|---------|
-| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw` |
+| `image.repository` | Container image | `ghcr.io/jedwards1230/openclaw-charts` |
 | `image.tag` | Image tag | `latest` |
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |

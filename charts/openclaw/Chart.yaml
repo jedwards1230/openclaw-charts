@@ -1,16 +1,20 @@
 apiVersion: v2
 name: openclaw
-description: Custom OpenClaw deployment with GitHub CLI for Discord bot
+description: Custom OpenClaw deployment with GitHub CLI — a Discord bot with AI agent capabilities for personal homelab use
 type: application
 version: 0.2.0
 appVersion: "2026.2.3"
+home: https://github.com/jedwards1230/openclaw-charts
 maintainers:
   - name: jedwards1230
     url: https://github.com/jedwards1230
 sources:
   - https://github.com/jedwards1230/openclaw-charts
+  - https://github.com/openclaw/openclaw
 keywords:
   - openclaw
+  - discord-bot
+  - ai-agent
   - discord
   - bot
   - gateway
