@@ -94,6 +94,19 @@ securityContext:
     drop:
       - ALL
 
+# -- Pod annotations (e.g., Velero backup hooks)
+podAnnotations: {}
+
+# -- Priority class name for scheduling priority
+priorityClassName: ""
+
+# -- Override default health probes (TCP socket on gateway port)
+# Set per-probe config to override. Omit or set to {} to use defaults.
+probes:
+  startup: {}
+  liveness: {}
+  readiness: {}
+
 nodeSelector:
   kubernetes.io/arch: amd64
 tolerations: []
