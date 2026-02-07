@@ -1,0 +1,138 @@
+image:
+  repository: ghcr.io/jedwards1230/openclaw
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+replicaCount: 1
+
+strategy:
+  type: Recreate
+
+# -- OpenClaw gateway configuration
+gateway:
+  port: 18789
+  bind: "lan"
+  auth:
+    mode: "token"
+  controlUi:
+    allowInsecureAuth: true
+
+# -- Agent defaults
+agents:
+  defaults:
+    model:
+      primary: "anthropic/claude-sonnet-4-5"
+    workspace: "/home/node/.openclaw/workspace"
+
+# -- Discord channel configuration
+discord:
+  enabled: true
+  commands:
+    native: true
+  dm:
+    enabled: true
+    policy: "pairing"
+    allowFrom: []
+  guilds: {}
+  #   "1304648203605377147":
+  #     requireMention: true
+  #     channels:
+  #       "*":
+  #         allow: true
+  #         requireMention: true
+  #       "lilclaw-home":
+  #         allow: true
+  #         requireMention: false
+
+# -- Tool permission lists
+tools:
+  allow:
+    - read
+    - write
+    - edit
+    - exec
+    - web_search
+    - web_fetch
+  deny:
+    - apply_patch
+    - browser
+    - canvas
+    - gateway
+    - process
+
+# -- Git identity for commits
+git:
+  authorName: "LilClaw"
+  authorEmail: "lilclaw@lilbro.cloud"
+  committerName: "LilClaw"
+  committerEmail: "lilclaw@lilbro.cloud"
+  configGlobal: "/home/node/.openclaw/.gitconfig"
+
+# -- Node.js options
+nodeOptions: "--max-old-space-size=1536"
+
+# -- Home directory path inside the container
+homePath: "/home/node"
+
+# -- Envsubst init container image
+envsubst:
+  image: dibi/envsubst:latest
+
+# -- Secrets configuration
+secrets:
+  existingSecret: ""
+  onepassword:
+    enabled: false
+    itemPath: ""
+
+# -- NFS persistence for openclaw workspace/config
+persistence:
+  size: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    enabled: false
+    server: ""
+    path: ""
+
+# -- Ingress configuration
+ingress:
+  enabled: false
+  host: ""
+  annotations: {}
+  tls: []
+
+# -- Service configuration
+service:
+  type: ClusterIP
+  port: 18789
+
+# -- Resource requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# -- Pod security context
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# -- Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+tolerations: []
+affinity: {}

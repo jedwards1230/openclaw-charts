@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openclaw.fullname" . }}
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    {{- toYaml .Values.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "openclaw.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "openclaw.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: openclaw
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      initContainers:
+        # Envsubst init container to inject secrets into config
+        - name: envsubst
+          image: {{ .Values.envsubst.image }}
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p {{ .Values.homePath }}/.openclaw
+              envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
+              cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
+              [credential]
+                helper = !gh auth git-credential
+              GITCONF
+          envFrom:
+            - secretRef:
+                name: {{ include "openclaw.secretName" . }}
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+              readOnly: true
+            - name: openclaw-home
+              mountPath: {{ .Values.homePath }}/.openclaw
+          securityContext:
+            allowPrivilegeEscalation: false
+
+      containers:
+        - name: openclaw
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: HOME
+              value: {{ .Values.homePath | quote }}
+            - name: GIT_CONFIG_GLOBAL
+              value: {{ .Values.git.configGlobal | quote }}
+            - name: NODE_OPTIONS
+              value: {{ .Values.nodeOptions | quote }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openclaw.secretName" . }}
+                  key: ANTHROPIC_API_KEY
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openclaw.secretName" . }}
+                  key: GITHUB_TOKEN
+            - name: GIT_AUTHOR_NAME
+              value: {{ .Values.git.authorName | quote }}
+            - name: GIT_AUTHOR_EMAIL
+              value: {{ .Values.git.authorEmail | quote }}
+            - name: GIT_COMMITTER_NAME
+              value: {{ .Values.git.committerName | quote }}
+            - name: GIT_COMMITTER_EMAIL
+              value: {{ .Values.git.committerEmail | quote }}
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openclaw.secretName" . }}
+                  key: GATEWAY_AUTH_TOKEN
+          ports:
+            - name: gateway
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+
+          startupProbe:
+            tcpSocket:
+              port: gateway
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+
+          livenessProbe:
+            tcpSocket:
+              port: gateway
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+          readinessProbe:
+            tcpSocket:
+              port: gateway
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          volumeMounts:
+            - name: openclaw-home
+              mountPath: {{ .Values.homePath }}/.openclaw
+
+      volumes:
+        - name: config-template
+          configMap:
+            name: {{ include "openclaw.fullname" . }}-config
+        - name: openclaw-home
+          persistentVolumeClaim:
+            claimName: {{ include "openclaw.fullname" . }}-config
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

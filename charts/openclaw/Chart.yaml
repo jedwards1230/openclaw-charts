@@ -1,0 +1,16 @@
+apiVersion: v2
+name: openclaw
+description: Custom OpenClaw deployment with GitHub CLI for Discord bot
+type: application
+version: 0.1.0
+appVersion: "2026.2.2"
+maintainers:
+  - name: jedwards1230
+    url: https://github.com/jedwards1230
+sources:
+  - https://github.com/jedwards1230/openclaw
+keywords:
+  - openclaw
+  - discord
+  - bot
+  - gateway
