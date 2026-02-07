@@ -66,6 +66,26 @@ ingress:
   annotations: {}
   tls: []
 
+# -- Additional ingresses for separate access rules
+# Useful for exposing specific endpoints (e.g., webhooks) with different
+# security settings while keeping the main UI restricted to LAN-only access.
+#
+# Example: Expose /hooks endpoint publicly while main UI stays LAN-only
+# additionalIngresses:
+#   - name: webhook
+#     enabled: true
+#     host: openclaw.example.com
+#     path: /hooks
+#     pathType: Prefix
+#     annotations:
+#       traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+#       cert-manager.io/cluster-issuer: letsencrypt-prod
+#     tls:
+#       - hosts:
+#           - openclaw.example.com
+#         secretName: openclaw-webhook-tls
+additionalIngresses: []
+
 # -- Service configuration
 service:
   type: ClusterIP
