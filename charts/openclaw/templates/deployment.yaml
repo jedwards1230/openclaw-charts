@@ -140,6 +140,63 @@ spec:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
 
+        {{- if .Values.webhookd.enabled }}
+        - name: webhookd
+          image: "{{ .Values.webhookd.image.repository }}:{{ .Values.webhookd.image.tag }}"
+          imagePullPolicy: {{ .Values.webhookd.image.pullPolicy }}
+          command: ["node", "/scripts/webhookd.mjs"]
+          env:
+            - name: WEBHOOKD_PORT
+              value: {{ .Values.webhookd.port | quote }}
+            - name: GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openclaw.secretName" . }}
+                  key: GITHUB_WEBHOOK_SECRET
+            - name: WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "openclaw.secretName" . }}
+                  key: WEBHOOK_TOKEN
+          ports:
+            - name: webhookd
+              containerPort: {{ .Values.webhookd.port }}
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: webhookd
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: webhookd
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: webhookd
+            periodSeconds: 10
+            failureThreshold: 3
+          {{- with .Values.webhookd.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: webhookd-script
+              mountPath: /scripts
+              readOnly: true
+        {{- end }}
+
       volumes:
         - name: config-template
           configMap:
@@ -147,6 +204,11 @@ spec:
         - name: openclaw-home
           persistentVolumeClaim:
             claimName: {{ include "openclaw.fullname" . }}-config
+        {{- if .Values.webhookd.enabled }}
+        - name: webhookd-script
+          configMap:
+            name: {{ include "openclaw.fullname" . }}-webhookd
+        {{- end }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:

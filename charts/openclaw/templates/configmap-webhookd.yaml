@@ -1,0 +1,90 @@
+{{- if .Values.webhookd.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw.fullname" . }}-webhookd
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+    app.kubernetes.io/component: webhookd
+data:
+  webhookd.mjs: |
+    import { createServer } from "node:http";
+    import { createHmac, timingSafeEqual } from "node:crypto";
+
+    const PORT = parseInt(process.env.WEBHOOKD_PORT || "{{ .Values.webhookd.port }}", 10);
+    const TARGET = `http://localhost:{{ .Values.gateway.port }}{{ .Values.webhookd.targetPath }}`;
+    const SECRET = process.env.GITHUB_WEBHOOK_SECRET;
+    const TOKEN = process.env.WEBHOOK_TOKEN;
+
+    if (!SECRET || !TOKEN) {
+      console.error("FATAL: GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN must be set");
+      process.exit(1);
+    }
+
+    function verifySignature(payload, signature) {
+      if (!signature) return false;
+      const expected = "sha256=" + createHmac("sha256", SECRET).update(payload).digest("hex");
+      try {
+        return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+      } catch {
+        return false;
+      }
+    }
+
+    function readBody(req) {
+      return new Promise((resolve, reject) => {
+        const chunks = [];
+        req.on("data", (c) => chunks.push(c));
+        req.on("end", () => resolve(Buffer.concat(chunks)));
+        req.on("error", reject);
+      });
+    }
+
+    const server = createServer(async (req, res) => {
+      if (req.method === "GET" && req.url === "/healthz") {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        return res.end("ok");
+      }
+
+      if (req.method !== "POST") {
+        res.writeHead(405, { "Content-Type": "text/plain" });
+        return res.end("Method Not Allowed");
+      }
+
+      try {
+        const body = await readBody(req);
+        const sig = req.headers["x-hub-signature-256"];
+
+        if (!verifySignature(body, sig)) {
+          console.warn("Rejected: invalid signature from", req.headers["x-github-delivery"] || "unknown");
+          res.writeHead(401, { "Content-Type": "text/plain" });
+          return res.end("Unauthorized: invalid signature");
+        }
+
+        console.log("Verified:", req.headers["x-github-event"] || "unknown", req.headers["x-github-delivery"] || "");
+
+        const upstream = await fetch(TARGET, {
+          method: "POST",
+          headers: {
+            "Content-Type": req.headers["content-type"] || "application/json",
+            "x-openclaw-token": TOKEN,
+            "x-github-event": req.headers["x-github-event"] || "",
+            "x-github-delivery": req.headers["x-github-delivery"] || "",
+          },
+          body,
+        });
+
+        const respBody = await upstream.text();
+        res.writeHead(upstream.status, { "Content-Type": "text/plain" });
+        res.end(respBody);
+      } catch (err) {
+        console.error("Forward error:", err.message);
+        res.writeHead(502, { "Content-Type": "text/plain" });
+        res.end("Bad Gateway: " + err.message);
+      }
+    });
+
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`webhookd listening on :${PORT}, forwarding to ${TARGET}`);
+    });
+{{- end }}
