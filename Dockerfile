@@ -74,8 +74,11 @@ TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
 exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
     && chmod +x /usr/bin/gh
 
+# Create cache directory for GitHub App credential helper
+RUN mkdir -p /home/node/.cache/github-app-credential
+
 # Ensure node user owns everything
-RUN chown -R node:node /app
+RUN chown -R node:node /app /home/node/.cache
 
 # Run as non-root (node = uid 1000)
 USER node
