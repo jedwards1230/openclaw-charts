@@ -17,6 +17,7 @@ gateway:
   auth:
     mode: "token"
   controlUi:
+    # -- Allow non-HTTPS auth for control UI. Set to false when TLS is configured.
     allowInsecureAuth: true
 
 # -- Freeform app config (merged with gateway into openclaw.json)
@@ -50,6 +51,7 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 # -- Envsubst init container image
+# For production, pin to a specific digest: dibi/envsubst@sha256:<digest>
 envsubst:
   image: dibi/envsubst:latest
 
@@ -133,6 +135,7 @@ podSecurityContext:
 # -- Container security context
 securityContext:
   allowPrivilegeEscalation: false
+  # OpenClaw writes to the filesystem at runtime (workspaces, caches).
   readOnlyRootFilesystem: false
   runAsNonRoot: true
   capabilities:
@@ -179,6 +182,7 @@ webhookd:
 podLabels: {}
 
 # -- Network policy configuration
+# When enabled, restricts traffic to Traefik ingress (inbound) and HTTPS/DNS (outbound).
 networkPolicy:
   enabled: false
 
