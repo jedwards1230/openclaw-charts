@@ -31,7 +31,9 @@ RUN apt-get install -y --no-install-recommends gnupg \
     && apt-get update \
     && apt-get install -y --no-install-recommends 1password-cli kubectl \
     # Install ArgoCD CLI
-    && curl -fsSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-$(dpkg --print-architecture | sed 's/amd64/amd64/;s/arm64/arm64/') \
+    && ARCH="$(dpkg --print-architecture)" \
+    && case "${ARCH}" in amd64|arm64) ;; *) echo "Unsupported architecture for ArgoCD CLI: ${ARCH}" >&2; exit 1 ;; esac \
+    && curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-${ARCH}" \
     && chmod +x /usr/local/bin/argocd \
     && rm -rf /var/lib/apt/lists/*
 
