@@ -102,6 +102,16 @@ service:
   type: ClusterIP
   port: 18789
 
+# -- ServiceAccount configuration
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
 # -- Resource requests and limits
 resources:
   requests:
@@ -116,11 +126,15 @@ podSecurityContext:
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
 # -- Container security context
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: false
+  runAsNonRoot: true
   capabilities:
     drop:
       - ALL
@@ -157,6 +171,16 @@ webhookd:
     limits:
       cpu: 100m
       memory: 64Mi
+
+# -- Additional pod labels
+# Note: Pod Security Admission (PSA) labels (pod-security.kubernetes.io/*)
+# must be applied to the Namespace, not individual Pods. Configure them on
+# the namespace outside this chart if needed.
+podLabels: {}
+
+# -- Network policy configuration
+networkPolicy:
+  enabled: false
 
 nodeSelector:
   kubernetes.io/arch: amd64

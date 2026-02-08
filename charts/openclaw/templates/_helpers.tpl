@@ -52,3 +52,14 @@ Secret name — existingSecret takes precedence, then release-name-secrets
 {{- include "openclaw.fullname" . }}-secrets
 {{- end }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "openclaw.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "openclaw.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
