@@ -77,10 +77,13 @@ TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
 exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
     && chmod +x /usr/bin/gh
 
-# Create cache directory for GitHub App credential helper
+# Create cache directory for GitHub App credential helper.
+# Use 770 so fsGroup (set via podSecurityContext) can grant access when the
+# container runs as a different UID than the image default (uid 1000).
 RUN mkdir -p /home/node/.cache/github-app-credential \
-    && chmod -R 700 /home/node/.cache \
-    && chown -R node:node /home/node/.cache
+    && chown -R node:node /home/node/.cache \
+    && chmod 770 /home/node/.cache \
+    && chmod 700 /home/node/.cache/github-app-credential
 
 # Ensure node user owns everything
 RUN chown -R node:node /app

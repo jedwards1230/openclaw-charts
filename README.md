@@ -93,15 +93,27 @@ The chart includes an optional webhook verification sidecar (`webhookd.enabled: 
 **Required secrets** (in addition to `WEBHOOK_TOKEN`):
 - `GITHUB_WEBHOOK_SECRET` — the secret configured in your GitHub webhook settings
 
-Use `additionalIngresses` to route `/hooks` traffic to the webhookd port while keeping the main UI on a separate, LAN-restricted ingress.
+Route `/hooks` traffic to the webhookd sidecar using `additionalIngresses` with `servicePort: webhookd`:
+
+```yaml
+additionalIngresses:
+  - name: webhook
+    enabled: true
+    host: openclaw.example.com
+    path: /hooks
+    pathType: Prefix
+    servicePort: webhookd  # routes to the webhookd sidecar, not the main gateway
+```
+
+This keeps the main UI on a separate, LAN-restricted ingress.
 
 ## Security Considerations
 
 **`gateway.controlUi.allowInsecureAuth`** (default: `false`) — Controls whether the control UI accepts authentication over non-HTTPS connections. Set to `true` only for local development without TLS.
 
-**`readOnlyRootFilesystem`** (default: `true`) — The container filesystem is read-only. Writable paths (`/tmp`, `~/.cache`, `~/.npm`) are provided via emptyDir mounts. The persistent workspace is mounted at `~/.openclaw`.
+**`securityContext.readOnlyRootFilesystem`** (default: `true`) — The container filesystem is read-only. Writable paths (`/tmp`, `~/.cache`, `~/.npm`) are provided via emptyDir mounts. The persistent workspace is mounted at `~/.openclaw`.
 
-**`networkPolicy.enabled`** (default: `false`) — When enabled, restricts pod traffic to only Traefik ingress (inbound) and HTTPS/DNS (outbound). Recommended for production deployments.
+**`networkPolicy.enabled`** (default: `false`) — When enabled, applies a NetworkPolicy that allows ingress from Traefik and other pods in the same namespace, and allows egress only to DNS, HTTP (TCP/80), HTTPS (TCP/443), and the in-namespace `mcp-proxy` service on TCP/8080. Recommended for production deployments.
 
 **Image tags** — The default `image.tag` is `latest`. For production, pin to a specific SHA tag from the build workflow.
 

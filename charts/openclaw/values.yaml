@@ -182,7 +182,9 @@ webhookd:
 podLabels: {}
 
 # -- Network policy configuration
-# When enabled, restricts traffic to Traefik ingress (inbound) and HTTPS/DNS (outbound).
+# When enabled, applies a NetworkPolicy that:
+# - Allows inbound traffic from Traefik ingress and from any pod in the same namespace
+# - Allows outbound traffic to DNS (UDP/53), HTTP (TCP/80), HTTPS (TCP/443), and in-namespace mcp-proxy (TCP/8080)
 networkPolicy:
   enabled: false
 
