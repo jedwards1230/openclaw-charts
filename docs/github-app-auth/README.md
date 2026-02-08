@@ -29,13 +29,13 @@ export GITHUB_APP_INSTALLATION_ID="98765"
 export GITHUB_APP_PRIVATE_KEY_PATH="$HOME/github-app-key.pem"
 
 # 2. Generate token
-node github-app-token.mjs
+node scripts/github-app-auth/github-app-token.mjs
 
 # 3. Use with gh CLI
-./gh-wrapper.sh pr list --repo owner/repo
+./scripts/github-app-auth/gh-wrapper.sh pr list --repo owner/repo
 
 # Or create alias
-alias gh='./gh-wrapper.sh'
+alias gh='./scripts/github-app-auth/gh-wrapper.sh'
 gh pr list --repo owner/repo
 ```
 

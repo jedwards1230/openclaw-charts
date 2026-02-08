@@ -1,6 +1,11 @@
 #!/bin/bash
+set -euo pipefail
+
 # Example test script - DO NOT RUN without setting credentials!
 # This demonstrates the full workflow
+
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "🔍 Checking prerequisites..."
 
@@ -18,20 +23,16 @@ echo "✅ Credentials found"
 echo ""
 
 echo "🔑 Generating token..."
-TOKEN=$(node github-app-token.mjs)
-if [[ $? -ne 0 ]]; then
-  echo "❌ Token generation failed"
-  exit 1
-fi
+TOKEN=$(node "$SCRIPT_DIR/github-app-token.mjs")
 echo "✅ Token generated: ${TOKEN:0:20}..."
 echo ""
 
 echo "📊 Getting token details..."
-node github-app-token.mjs --json
+node "$SCRIPT_DIR/github-app-token.mjs" --json
 echo ""
 
 echo "🧪 Testing gh CLI with wrapper..."
-./gh-wrapper.sh auth status
+"$SCRIPT_DIR/gh-wrapper.sh" auth status
 echo ""
 
 echo "✅ All tests passed!"

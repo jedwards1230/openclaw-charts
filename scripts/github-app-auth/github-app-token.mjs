@@ -18,12 +18,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const CACHE_DIR = process.env.HOME + '/.openclaw/state/credentials';
+const CACHE_DIR = process.env.OPENCLAW_CACHE_DIR
+  || path.join(os.homedir(), '.openclaw', 'state', 'credentials');
 const CACHE_FILE = path.join(CACHE_DIR, 'github-app.token.json');
 const GITHUB_API_URL = process.env.GITHUB_API_URL || 'https://api.github.com';
 
@@ -119,13 +121,27 @@ async function generateInstallationToken(appId, installationId, privateKeyPem) {
 // Token Caching (inspired by github-copilot-token.ts)
 // ============================================================================
 
-function loadCachedToken() {
+function loadCachedToken(appId, installationId, apiUrl) {
   try {
     if (!fs.existsSync(CACHE_FILE)) {
       return null;
     }
     const content = fs.readFileSync(CACHE_FILE, 'utf8');
     const cached = JSON.parse(content);
+    
+    // Validate required fields
+    if (typeof cached.token !== 'string' || 
+        typeof cached.expiresAt !== 'number' ||
+        !cached.token) {
+      return null; // Invalid cache format
+    }
+    
+    // Validate cache matches current configuration
+    if (cached.appId !== appId || 
+        cached.installationId !== installationId ||
+        cached.apiUrl !== apiUrl) {
+      return null; // Cache is for different app/installation/API
+    }
     
     // Check if token is still valid (with buffer)
     const now = Date.now();
@@ -141,8 +157,26 @@ function loadCachedToken() {
 
 function saveCachedToken(tokenData) {
   try {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(tokenData, null, 2), 'utf8');
+    // Ensure directory exists with restrictive permissions (0700)
+    fs.mkdirSync(CACHE_DIR, { recursive: true, mode: 0o700 });
+
+    const tmpFile = CACHE_FILE + '.tmp';
+
+    // Write to a temporary file with restrictive permissions (0600),
+    // then atomically rename into place.
+    fs.writeFileSync(tmpFile, JSON.stringify(tokenData, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600,
+    });
+
+    fs.renameSync(tmpFile, CACHE_FILE);
+
+    // Ensure final file permissions are restrictive even if it already existed.
+    try {
+      fs.chmodSync(CACHE_FILE, 0o600);
+    } catch {
+      // Ignore chmod errors (e.g., on non-POSIX systems); caching is best-effort.
+    }
   } catch (error) {
     console.error('Warning: Failed to cache token:', error.message);
   }
@@ -191,7 +225,7 @@ async function main() {
 
   // Check cache first (unless force refresh)
   if (!forceRefresh) {
-    const cached = loadCachedToken();
+    const cached = loadCachedToken(appId, installationId, GITHUB_API_URL);
     if (cached) {
       if (jsonOutput) {
         console.log(JSON.stringify(cached, null, 2));
@@ -216,10 +250,18 @@ async function main() {
   // Generate token
   const tokenData = await generateInstallationToken(appId, installationId, privateKeyPem);
   
+  // Add validation fields for cache
+  const cacheData = {
+    ...tokenData,
+    appId,
+    installationId,
+    apiUrl: GITHUB_API_URL,
+  };
+  
   // Cache it
-  saveCachedToken(tokenData);
+  saveCachedToken(cacheData);
 
-  // Output
+  // Output (without the validation fields for backwards compatibility)
   if (jsonOutput) {
     console.log(JSON.stringify(tokenData, null, 2));
   } else {

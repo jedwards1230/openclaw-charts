@@ -255,10 +255,18 @@ console.log('Key loaded successfully:', key.type);
 ### Installation ID Unknown
 
 ```bash
-# List all installations (requires JWT first)
-# Use this helper:
-node github-app-token.mjs --json 2>&1 | grep -o 'installation-id: [0-9]*' || \
-  echo "Check app installations at: https://github.com/settings/installations"
+# List all installations for this GitHub App (requires a JWT)
+# 1) Generate a short-lived JWT for your GitHub App and export it, e.g.:
+#    export GITHUB_APP_JWT="<your GitHub App JWT>"
+#
+# 2) Call the GitHub Apps API to list installations and show their IDs:
+gh api /app/installations \
+  -H "Authorization: Bearer $GITHUB_APP_JWT" \
+  -H "Accept: application/vnd.github+json" | \
+  jq '.[] | {id, account: .account.login, target_type}'
+
+# If you prefer the web UI, you can also open:
+# https://github.com/settings/installations
 ```
 
 ### Permission Denied
