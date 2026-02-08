@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       openclaw_version:
-        description: "OpenClaw version tag (e.g. v2026.2.2)"
+        description: "OpenClaw version tag (e.g. v2026.2.6)"
         required: true
 
 env:
