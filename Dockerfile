@@ -75,10 +75,12 @@ exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
     && chmod +x /usr/bin/gh
 
 # Create cache directory for GitHub App credential helper
-RUN mkdir -p /home/node/.cache/github-app-credential
+# Make world-writable to support UID overrides via podSecurityContext
+RUN mkdir -p /home/node/.cache/github-app-credential \
+    && chmod -R 777 /home/node/.cache
 
 # Ensure node user owns everything
-RUN chown -R node:node /app /home/node/.cache
+RUN chown -R node:node /app
 
 # Run as non-root (node = uid 1000)
 USER node
