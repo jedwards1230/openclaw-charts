@@ -59,6 +59,20 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
+# GitHub App credential helper: generates installation tokens just-in-time
+# for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
+COPY scripts/git-credential-github-app /usr/local/bin/git-credential-github-app
+RUN chmod +x /usr/local/bin/git-credential-github-app
+
+# gh wrapper: injects GitHub App token as GH_TOKEN before calling real gh.
+# Falls back to existing GITHUB_TOKEN/GH_TOKEN if App env vars aren't set.
+RUN mv /usr/bin/gh /usr/bin/gh-real \
+    && printf '#!/bin/sh\n\
+TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
+[ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"\n\
+exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
+    && chmod +x /usr/bin/gh
+
 # Ensure node user owns everything
 RUN chown -R node:node /app
 
