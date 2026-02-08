@@ -12,6 +12,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 
 # Install CLI tools for K8s management (1Password CLI, kubectl, ArgoCD CLI)
 RUN apt-get update \
+    && apt-get install -y --no-install-recommends gnupg \
     # Install 1Password CLI
     && curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
       | gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg \
