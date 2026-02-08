@@ -22,6 +22,6 @@ jobs:
           context: .
           platforms: linux/amd64
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=openclaw
+          cache-to: type=gha,mode=max,scope=openclaw
           tags: openclaw-charts:pr-${{ github.event.pull_request.number }}
