@@ -9,6 +9,7 @@ Custom OpenClaw Docker image and Helm chart for deploying a Discord bot with Git
 This customized build includes:
 
 - **GitHub CLI (`gh`)** pre-installed for seamless GitHub interactions
+- **GitHub App credential helper** for bot-identity authentication (git + gh)
 - **Custom Helm chart** tailored for Kubernetes homelab deployments
 - **Personal homelab optimizations** including NFS storage support, 1Password integration, and multi-ingress routing
 
@@ -52,6 +53,29 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 | `ingress.enabled` | Enable ingress | `false` |
 
 See `charts/openclaw/values.yaml` for the full reference.
+
+## GitHub App Authentication
+
+The image includes `git-credential-github-app`, a git credential helper that generates short-lived GitHub App installation tokens just-in-time. This replaces personal access tokens with scoped, auto-expiring bot identity.
+
+**How it works:**
+
+```
+git push  →  credential helper  →  generates installation token  →  x-access-token
+gh pr create  →  /usr/bin/gh wrapper  →  same credential helper  →  GH_TOKEN
+```
+
+The credential helper chain falls back gracefully — if GitHub App env vars aren't set, git uses `gh auth git-credential` and gh uses `GITHUB_TOKEN` as before.
+
+**Required env vars** (set via extraEnv + K8s secrets):
+
+| Variable | Description |
+|----------|-------------|
+| `GITHUB_APP_ID` | GitHub App ID |
+| `GITHUB_APP_INSTALLATION_ID` | Installation ID for the target org/user |
+| `GITHUB_APP_PRIVATE_KEY` | PEM private key content |
+
+Tokens are cached for ~55 minutes (5-minute buffer on the 1-hour lifetime), stored at `~/.cache/github-app-credential/token.json` with `0600` permissions.
 
 ## CI/CD
 
