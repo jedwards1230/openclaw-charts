@@ -46,7 +46,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 | `image.tag` | Image tag | `latest` |
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |
-| `gateway.controlUi.allowInsecureAuth` | Allow non-HTTPS auth for control UI | `true` |
+| `gateway.controlUi.allowInsecureAuth` | Allow non-HTTPS auth for control UI | `false` |
 | `config` | Freeform openclaw.json config (agents, channels, tools, etc.) | `{}` |
 | `webhookd.enabled` | Enable GitHub webhook HMAC verification sidecar | `false` |
 | `networkPolicy.enabled` | Enable Kubernetes NetworkPolicy | `false` |
@@ -97,15 +97,15 @@ Use `additionalIngresses` to route `/hooks` traffic to the webhookd port while k
 
 ## Security Considerations
 
-**`gateway.controlUi.allowInsecureAuth`** (default: `true`) — Allows the OpenClaw control UI to accept authentication over non-HTTPS connections. Set to `false` in production when TLS is configured.
+**`gateway.controlUi.allowInsecureAuth`** (default: `false`) — Controls whether the control UI accepts authentication over non-HTTPS connections. Set to `true` only for local development without TLS.
 
-**`readOnlyRootFilesystem`** (default: `false`) — OpenClaw writes to the filesystem at runtime (workspaces, caches). This cannot be set to `true` without breaking functionality.
+**`readOnlyRootFilesystem`** (default: `true`) — The container filesystem is read-only. Writable paths (`/tmp`, `~/.cache`, `~/.npm`) are provided via emptyDir mounts. The persistent workspace is mounted at `~/.openclaw`.
 
 **`networkPolicy.enabled`** (default: `false`) — When enabled, restricts pod traffic to only Traefik ingress (inbound) and HTTPS/DNS (outbound). Recommended for production deployments.
 
 **Image tags** — The default `image.tag` is `latest`. For production, pin to a specific SHA tag from the build workflow.
 
-**`envsubst` init container** — Uses `dibi/envsubst:latest` by default. Pin to a specific digest for supply-chain safety: `envsubst.image: dibi/envsubst@sha256:<digest>`.
+**`envsubst` init container** — Uses `alpine:3.21` by default. Pin to a specific tag or digest for supply-chain safety.
 
 ## CI/CD
 

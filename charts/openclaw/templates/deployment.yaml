@@ -50,6 +50,7 @@ spec:
             - sh
             - -c
             - |
+              apk add --no-cache gettext > /dev/null 2>&1 || true
               mkdir -p {{ .Values.homePath }}/.openclaw
               envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
@@ -156,6 +157,12 @@ spec:
           volumeMounts:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: {{ .Values.homePath }}/.cache
+            - name: npm-cache
+              mountPath: {{ .Values.homePath }}/.npm
 
         {{- if .Values.webhookd.enabled }}
         - name: webhookd
@@ -221,6 +228,12 @@ spec:
         - name: openclaw-home
           persistentVolumeClaim:
             claimName: {{ include "openclaw.fullname" . }}-config
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
         {{- if .Values.webhookd.enabled }}
         - name: webhookd-script
           configMap:

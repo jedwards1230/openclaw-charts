@@ -17,8 +17,8 @@ gateway:
   auth:
     mode: "token"
   controlUi:
-    # -- Allow non-HTTPS auth for control UI. Set to false when TLS is configured.
-    allowInsecureAuth: true
+    # -- Allow non-HTTPS auth for control UI. Set to true only for local development without TLS.
+    allowInsecureAuth: false
 
 # -- Freeform app config (merged with gateway into openclaw.json)
 # Add any top-level openclaw.json keys here (agents, channels, tools, etc.)
@@ -51,9 +51,9 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 # -- Envsubst init container image
-# For production, pin to a specific digest: dibi/envsubst@sha256:<digest>
+# Uses Alpine with gettext for envsubst. Pin to a specific tag for production.
 envsubst:
-  image: dibi/envsubst:latest
+  image: alpine:3.21
 
 # -- Secrets configuration
 secrets:
@@ -135,8 +135,8 @@ podSecurityContext:
 # -- Container security context
 securityContext:
   allowPrivilegeEscalation: false
-  # OpenClaw writes to the filesystem at runtime (workspaces, caches).
-  readOnlyRootFilesystem: false
+  # Writable paths (/tmp, ~/.cache, ~/.npm) are provided via emptyDir mounts.
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
   capabilities:
     drop:
