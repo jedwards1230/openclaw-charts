@@ -105,7 +105,7 @@ Use `additionalIngresses` to route `/hooks` traffic to the webhookd port while k
 
 **Image tags** — The default `image.tag` is `latest`. For production, pin to a specific SHA tag from the build workflow.
 
-**`envsubst` init container** — Uses `alpine:3.21` by default. Pin to a specific tag or digest for supply-chain safety.
+**`envsubst` init container** — Uses `dibi/envsubst:1` by default. Pin to a specific digest for maximum supply-chain safety.
 
 ## CI/CD
 
