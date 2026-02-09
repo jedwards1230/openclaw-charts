@@ -96,7 +96,7 @@ data:
         const errorMessage = err instanceof Error ? err.message : String(err);
         console.error("Forward error:", errorMessage);
         res.writeHead(502, { "Content-Type": "text/plain" });
-        res.end("Bad Gateway: " + errorMessage);
+        res.end("Bad Gateway");
       }
     });
 

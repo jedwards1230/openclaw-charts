@@ -11,7 +11,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install CLI tools for K8s management (1Password CLI, kubectl, ArgoCD CLI)
-RUN apt-get install -y --no-install-recommends gnupg \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gnupg \
     # Install 1Password CLI
     && curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
       | gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg \
@@ -30,16 +31,18 @@ RUN apt-get install -y --no-install-recommends gnupg \
       > /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends 1password-cli kubectl \
-    # Install ArgoCD CLI
+    # Install ArgoCD CLI (pinned version)
+    && ARGOCD_VERSION="v3.3.0" \
     && ARCH="$(dpkg --print-architecture)" \
     && case "${ARCH}" in amd64|arm64) ;; *) echo "Unsupported architecture for ArgoCD CLI: ${ARCH}" >&2; exit 1 ;; esac \
-    && curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-${ARCH}" \
+    && curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-${ARCH}" \
     && chmod +x /usr/local/bin/argocd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bun (required by OpenClaw build scripts)
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:${PATH}"
+ARG BUN_VERSION=1.3.9
+ENV BUN_INSTALL="/usr/local"
+RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
 RUN corepack enable
 
@@ -74,10 +77,13 @@ TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
 exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
     && chmod +x /usr/bin/gh
 
-# Create cache directory for GitHub App credential helper
-# Make world-writable to support UID overrides via podSecurityContext
+# Create cache directory for GitHub App credential helper.
+# Use 770 so fsGroup (set via podSecurityContext) can grant access when the
+# container runs as a different UID than the image default (uid 1000).
 RUN mkdir -p /home/node/.cache/github-app-credential \
-    && chmod -R 777 /home/node/.cache
+    && chown -R node:node /home/node/.cache \
+    && chmod 770 /home/node/.cache \
+    && chmod 700 /home/node/.cache/github-app-credential
 
 # Install Tailscale CLI (for tailscale whois identity verification)
 ARG TAILSCALE_VERSION=1.82.5

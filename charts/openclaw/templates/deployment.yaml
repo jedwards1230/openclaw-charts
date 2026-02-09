@@ -163,6 +163,12 @@ spec:
           volumeMounts:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: {{ .Values.homePath }}/.cache
+            - name: npm-cache
+              mountPath: {{ .Values.homePath }}/.npm
             {{- if .Values.tailscale.enabled }}
             - name: tailscale-socket
               mountPath: /var/run/tailscale
@@ -177,8 +183,8 @@ spec:
             - name: TS_AUTHKEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.tailscale.authKeySecret }}
-                  key: {{ .Values.tailscale.authKeySecretKey }}
+                  name: {{ required "tailscale.authKeySecret is required when tailscale.enabled is true" .Values.tailscale.authKeySecret }}
+                  key: {{ required "tailscale.authKeySecretKey is required when tailscale.enabled is true" .Values.tailscale.authKeySecretKey }}
             - name: TS_STATE_DIR
               value: /var/lib/tailscale
             - name: TS_SOCKET
@@ -191,6 +197,17 @@ spec:
             - name: TS_HOSTNAME
               value: {{ .Values.tailscale.hostname | quote }}
             {{- end }}
+          startupProbe:
+            exec:
+              command: ["tailscale", "status", "--json"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            exec:
+              command: ["tailscale", "status", "--json"]
+            periodSeconds: 30
+            failureThreshold: 3
           {{- with .Values.tailscale.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -277,6 +294,12 @@ spec:
         - name: openclaw-home
           persistentVolumeClaim:
             claimName: {{ include "openclaw.fullname" . }}-config
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+        - name: npm-cache
+          emptyDir: {}
         {{- if .Values.webhookd.enabled }}
         - name: webhookd-script
           configMap:

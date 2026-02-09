@@ -74,4 +74,4 @@ jobs:
             OPENCLAW_VERSION=${{ steps.version.outputs.openclaw_version }}
           cache-from: type=gha,scope=openclaw
           cache-to: type=gha,mode=max,scope=openclaw
-          provenance: false
+          provenance: true
