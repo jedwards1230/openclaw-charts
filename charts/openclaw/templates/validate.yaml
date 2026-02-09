@@ -1,0 +1,43 @@
+{{/*
+Validation rules — run on install and upgrade only.
+Uses Helm's fail function to halt deployment with clear error messages.
+*/}}
+{{- if or .Release.IsInstall .Release.IsUpgrade -}}
+
+{{/* Validate: tailscale.enabled requires authKeySecret */}}
+{{- if .Values.tailscale.enabled }}
+{{- if not .Values.tailscale.authKeySecret }}
+{{- fail "tailscale.enabled is true but tailscale.authKeySecret is empty. Provide the name of the Secret containing the Tailscale auth key." }}
+{{- end }}
+{{- end }}
+
+{{/* Validate: secrets.onepassword.enabled requires itemPath */}}
+{{- if .Values.secrets.onepassword.enabled }}
+{{- if not .Values.secrets.onepassword.itemPath }}
+{{- fail "secrets.onepassword.enabled is true but secrets.onepassword.itemPath is empty. Provide the 1Password item path (e.g., vaults/homelab/items/k8s-hagen-openclaw-secrets)." }}
+{{- end }}
+{{- end }}
+
+{{/* Validate: persistence.nfs.enabled requires server and path */}}
+{{- if .Values.persistence.nfs.enabled }}
+{{- if not .Values.persistence.nfs.server }}
+{{- fail "persistence.nfs.enabled is true but persistence.nfs.server is empty. Provide the NFS server address." }}
+{{- end }}
+{{- if not .Values.persistence.nfs.path }}
+{{- fail "persistence.nfs.enabled is true but persistence.nfs.path is empty. Provide the NFS export path." }}
+{{- end }}
+{{- end }}
+
+{{/* Validate: secrets — must have either existingSecret or onepassword enabled */}}
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}
+{{- fail "No secret source configured. Set either secrets.existingSecret or enable secrets.onepassword." }}
+{{- end }}
+
+{{/* Validate: webhookd requires a secret (for GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN) */}}
+{{- if .Values.webhookd.enabled }}
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}
+{{- fail "webhookd.enabled is true but no secret source is configured. Webhookd requires GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN keys in a Secret." }}
+{{- end }}
+{{- end }}
+
+{{- end -}}

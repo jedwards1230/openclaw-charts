@@ -24,12 +24,20 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.gateway.port }}
+        {{- if .Values.webhookd.enabled }}
+        - protocol: TCP
+          port: {{ .Values.webhookd.port }}
+        {{- end }}
     # Allow ingress from same namespace (for debugging, kubectl port-forward)
     - from:
         - podSelector: {}
       ports:
         - protocol: TCP
           port: {{ .Values.gateway.port }}
+        {{- if .Values.webhookd.enabled }}
+        - protocol: TCP
+          port: {{ .Values.webhookd.port }}
+        {{- end }}
   egress:
     # Allow DNS to kube-system
     - to:
@@ -54,6 +62,17 @@ spec:
       ports:
         - protocol: TCP
           port: 80
+    {{- if .Values.tailscale.enabled }}
+    # Allow Tailscale WireGuard (direct connections) and STUN
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: UDP
+          port: 41641
+        - protocol: UDP
+          port: 3478
+    {{- end }}
     # Allow access to MCP proxy in same namespace
     - to:
         - podSelector:

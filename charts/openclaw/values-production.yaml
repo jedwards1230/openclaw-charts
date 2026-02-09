@@ -1,0 +1,140 @@
+# Production values — full security, ingress with TLS, NFS persistence
+# Use for production deployments with hardened security and ingress
+
+image:
+  repository: ghcr.io/jedwards1230/openclaw-charts
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+strategy:
+  type: Recreate
+
+gateway:
+  port: 18789
+  bind: "lan"
+  auth:
+    mode: "token"
+    allowTailscale: true
+  controlUi:
+    allowInsecureAuth: false
+
+config: {}
+
+extraEnv: []
+
+git:
+  authorName: "LilClaw"
+  authorEmail: "lilclaw@lilbro.cloud"
+  committerName: "LilClaw"
+  committerEmail: "lilclaw@lilbro.cloud"
+  configGlobal: "/home/node/.openclaw/.gitconfig"
+
+nodeOptions: "--max-old-space-size=1536"
+
+homePath: "/home/node"
+
+envsubst:
+  image: dibi/envsubst:1
+
+secrets:
+  existingSecret: ""
+  onepassword:
+    enabled: false
+    itemPath: ""
+
+# NFS persistence for workspace/config
+persistence:
+  size: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    enabled: true
+    server: "192.168.8.36"  # nas-1
+    path: "/mnt/tank-nvme/openclaw"
+
+# Ingress with TLS and LAN-only middleware
+ingress:
+  enabled: true
+  host: "openclaw.lilbro.cloud"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: kube-system-redirect-lan@kubernetescrd
+  tls:
+    - hosts:
+        - "openclaw.lilbro.cloud"
+      secretName: openclaw-tls
+
+additionalIngresses: []
+
+service:
+  type: ClusterIP
+  port: 18789
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Production resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Full security context
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+# Velero backup hook
+podAnnotations:
+  backup.velero.io/backup-volumes: "openclaw-data"
+  pre.hook.backup.velero.io/container: "openclaw"
+  pre.hook.backup.velero.io/command: '["/bin/sh", "-c", "sync"]'
+  pre.hook.backup.velero.io/timeout: "30s"
+
+priorityClassName: "system-cluster-critical"
+
+probes:
+  startup: {}
+  liveness: {}
+  readiness: {}
+
+webhookd:
+  enabled: false
+
+tailscale:
+  enabled: false
+
+podLabels: {}
+
+# Network policy enabled for production
+networkPolicy:
+  enabled: true
+
+extraVolumeMounts: []
+extraVolumes: []
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

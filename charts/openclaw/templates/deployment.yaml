@@ -21,6 +21,9 @@ spec:
         {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.secrets.onepassword.enabled }}
+        checksum/secret: {{ include (print $.Template.BasePath "/onepassworditem.yaml") . | sha256sum }}
+        {{- end }}
         {{- if .Values.webhookd.enabled }}
         checksum/webhookd: {{ include (print $.Template.BasePath "/configmap-webhookd.yaml") . | sha256sum }}
         {{- end }}
@@ -193,6 +196,9 @@ spec:
               mountPath: /var/run/tailscale
               readOnly: true
             {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
         {{- if .Values.tailscale.enabled }}
         - name: tailscale
@@ -337,6 +343,9 @@ spec:
           configMap:
             name: {{ include "openclaw.fullname" . }}-tailscale
         {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -348,5 +357,9 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}

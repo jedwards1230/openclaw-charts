@@ -2,8 +2,9 @@ apiVersion: v2
 name: openclaw
 description: Custom OpenClaw deployment with GitHub CLI — a Discord bot with AI agent capabilities for personal homelab use
 type: application
-version: 0.10.0
+version: 0.11.0
 appVersion: "2026.2.6"
+kubeVersion: ">=1.33.0-0"
 home: https://github.com/jedwards1230/openclaw-charts
 maintainers:
   - name: jedwards1230
@@ -18,3 +19,9 @@ keywords:
   - discord
   - bot
   - gateway
+  - kubernetes
+  - helm
+  - homelab
+  - tailscale
+  - webhook
+  - 1password
