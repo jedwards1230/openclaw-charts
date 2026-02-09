@@ -224,6 +224,8 @@ spec:
             capabilities:
               drop:
                 - ALL
+              add:
+                - FOWNER
           volumeMounts:
             - name: tailscale-state
               mountPath: /var/lib/tailscale
