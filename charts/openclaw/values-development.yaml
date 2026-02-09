@@ -1,0 +1,129 @@
+# Development values — relaxed security, NodePort access, no persistence
+# Use for local testing and debugging without ingress/TLS requirements
+
+image:
+  repository: ghcr.io/jedwards1230/openclaw-charts
+  tag: latest
+  pullPolicy: Always
+
+replicaCount: 1
+
+strategy:
+  type: Recreate
+
+gateway:
+  port: 18789
+  bind: "lan"
+  auth:
+    mode: "token"
+    allowTailscale: false
+  controlUi:
+    allowInsecureAuth: true  # Allow HTTP auth for local dev
+
+config: {}
+
+extraEnv: []
+
+git:
+  authorName: "LilClaw"
+  authorEmail: "lilclaw@lilbro.cloud"
+  committerName: "LilClaw"
+  committerEmail: "lilclaw@lilbro.cloud"
+  configGlobal: "/home/node/.openclaw/.gitconfig"
+
+nodeOptions: "--max-old-space-size=1536"
+
+homePath: "/home/node"
+
+envsubst:
+  image: dibi/envsubst:1
+
+secrets:
+  existingSecret: ""
+  onepassword:
+    enabled: false
+    itemPath: ""
+
+# No NFS persistence — use emptyDir for fast iteration
+persistence:
+  size: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    enabled: false
+    server: ""
+    path: ""
+
+# No ingress — access via NodePort directly
+ingress:
+  enabled: false
+  host: ""
+  annotations: {}
+  tls: []
+
+additionalIngresses: []
+
+# NodePort for direct access from host
+service:
+  type: NodePort
+  port: 18789
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Minimal resources — no limits for debugging
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits: {}
+
+# Relaxed security context for debugging
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  # Allow writable filesystem for easier debugging
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+podAnnotations: {}
+
+priorityClassName: ""
+
+probes:
+  startup: {}
+  liveness: {}
+  readiness: {}
+
+webhookd:
+  enabled: false
+
+tailscale:
+  enabled: false
+
+podLabels: {}
+
+# No network policy — allow all traffic for debugging
+networkPolicy:
+  enabled: false
+
+extraVolumeMounts: []
+extraVolumes: []
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []

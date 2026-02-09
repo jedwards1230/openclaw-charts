@@ -1,13 +1,15 @@
-name: PR Docker Build Check
+name: PR Check
 
 on:
   pull_request:
     paths:
       - 'Dockerfile'
+      - 'charts/**'
       - '.github/workflows/*.yml'
 
 jobs:
-  build:
+  docker-build:
+    name: Docker Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -26,3 +28,55 @@ jobs:
           push: false
           cache-from: type=gha,scope=openclaw
           tags: openclaw-charts:pr-${{ github.event.pull_request.number }}
+
+  helm-lint:
+    name: Helm Lint & Template
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm lint (default values)
+        run: |
+          helm lint charts/openclaw/ \
+            --set secrets.existingSecret=lint-test
+
+      - name: Helm lint (development values)
+        run: |
+          helm lint charts/openclaw/ \
+            -f charts/openclaw/values-development.yaml \
+            --set secrets.existingSecret=lint-test
+
+      - name: Helm lint (production values)
+        run: |
+          helm lint charts/openclaw/ \
+            -f charts/openclaw/values-production.yaml \
+            --set secrets.existingSecret=lint-test
+
+      - name: Helm template (default values)
+        run: |
+          helm template openclaw charts/openclaw/ \
+            --set secrets.existingSecret=lint-test \
+            --kube-version 1.33.0 \
+            > /dev/null
+
+      - name: Helm template (development values)
+        run: |
+          helm template openclaw charts/openclaw/ \
+            -f charts/openclaw/values-development.yaml \
+            --set secrets.existingSecret=lint-test \
+            --kube-version 1.33.0 \
+            > /dev/null
+
+      - name: Helm template (production values)
+        run: |
+          helm template openclaw charts/openclaw/ \
+            -f charts/openclaw/values-production.yaml \
+            --set secrets.existingSecret=lint-test \
+            --kube-version 1.33.0 \
+            > /dev/null

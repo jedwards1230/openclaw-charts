@@ -21,6 +21,12 @@ spec:
         {{- end }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.secrets.onepassword.enabled }}
+        {{- /* NOTE: This checksums the OnePasswordItem spec, not the resulting Secret data.
+               If the 1Password Operator rotates secret contents without spec changes,
+               pods won't auto-restart. Use kubectl rollout restart for manual rotation. */}}
+        checksum/secret: {{ include (print $.Template.BasePath "/onepassworditem.yaml") . | sha256sum }}
+        {{- end }}
         {{- if .Values.webhookd.enabled }}
         checksum/webhookd: {{ include (print $.Template.BasePath "/configmap-webhookd.yaml") . | sha256sum }}
         {{- end }}
@@ -79,6 +85,25 @@ spec:
             capabilities:
               drop:
                 - ALL
+
+        {{- if .Values.tailscale.enabled }}
+        # chown tailscale state dir so tailscaled can chmod 0700 it at startup
+        - name: tailscale-init
+          image: "{{ .Values.tailscale.image.repository }}:{{ .Values.tailscale.image.tag }}"
+          command: ["chown", "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.runAsGroup }}", "/var/lib/tailscale"]
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+        {{- end }}
 
       containers:
         - name: openclaw
@@ -174,6 +199,9 @@ spec:
               mountPath: /var/run/tailscale
               readOnly: true
             {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
         {{- if .Values.tailscale.enabled }}
         - name: tailscale
@@ -185,6 +213,10 @@ spec:
                 secretKeyRef:
                   name: {{ required "tailscale.authKeySecret is required when tailscale.enabled is true" .Values.tailscale.authKeySecret }}
                   key: {{ required "tailscale.authKeySecretKey is required when tailscale.enabled is true" .Values.tailscale.authKeySecretKey }}
+            - name: TS_KUBE_SECRET
+              value: ""
+            - name: KUBERNETES_SERVICE_HOST
+              value: ""
             - name: TS_STATE_DIR
               value: /var/lib/tailscale
             - name: TS_SOCKET
@@ -314,6 +346,9 @@ spec:
           configMap:
             name: {{ include "openclaw.fullname" . }}-tailscale
         {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -325,5 +360,9 @@ spec:
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
