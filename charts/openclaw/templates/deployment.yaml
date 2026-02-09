@@ -80,6 +80,25 @@ spec:
               drop:
                 - ALL
 
+        {{- if .Values.tailscale.enabled }}
+        # chown tailscale state dir so tailscaled can chmod 0700 it at startup
+        - name: tailscale-init
+          image: "{{ .Values.tailscale.image.repository }}:{{ .Values.tailscale.image.tag }}"
+          command: ["chown", "{{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.runAsGroup }}", "/var/lib/tailscale"]
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: false
+            runAsUser: 0
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - CHOWN
+        {{- end }}
+
       containers:
         - name: openclaw
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -224,8 +243,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-              add:
-                - FOWNER
           volumeMounts:
             - name: tailscale-state
               mountPath: /var/lib/tailscale
