@@ -59,11 +59,8 @@ spec:
             - sh
             - -c
             - |
-              set -e
-              apk add --no-cache gettext >/dev/null 2>&1
               mkdir -p {{ .Values.homePath }}/.openclaw
               envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
-              chown {{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.runAsGroup }} {{ .Values.homePath }}/.openclaw/openclaw.json
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
               [credential "https://github.com"]
                 helper = !/usr/local/bin/git-credential-github-app
@@ -71,7 +68,6 @@ spec:
               [credential]
                 helper = !gh auth git-credential
               GITCONF
-              chown {{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.runAsGroup }} {{ .Values.homePath }}/.openclaw/.gitconfig
           envFrom:
             - secretRef:
                 name: {{ include "openclaw.secretName" . }}
@@ -83,8 +79,9 @@ spec:
               mountPath: {{ .Values.homePath }}/.openclaw
           securityContext:
             allowPrivilegeEscalation: false
-            runAsNonRoot: false
-            runAsUser: 0
+            runAsNonRoot: true
+            runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
             capabilities:
               drop:
                 - ALL
