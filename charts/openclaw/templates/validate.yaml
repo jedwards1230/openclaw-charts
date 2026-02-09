@@ -28,6 +28,11 @@ Uses Helm's fail function to halt deployment with clear error messages.
 {{- end }}
 {{- end }}
 
+{{/* Validate: a secret source must be configured (envsubst init container needs it) */}}
+{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}
+{{- fail "No secret source configured. The envsubst init container requires a Secret for config templating. Set secrets.existingSecret or enable secrets.onepassword." }}
+{{- end }}
+
 {{/* Validate: webhookd requires an explicit secret source (for GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN) */}}
 {{- if .Values.webhookd.enabled }}
 {{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}

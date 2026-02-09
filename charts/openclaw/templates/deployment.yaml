@@ -59,6 +59,7 @@ spec:
             - sh
             - -c
             - |
+              apk add --no-cache gettext >/dev/null 2>&1
               mkdir -p {{ .Values.homePath }}/.openclaw
               envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
@@ -105,6 +106,10 @@ spec:
                 - CHOWN
         {{- end }}
 
+        {{- with .Values.extraInitContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
       containers:
         - name: openclaw
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -131,6 +136,10 @@ spec:
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: gateway
               containerPort: {{ .Values.gateway.port }}
@@ -317,6 +326,10 @@ spec:
             - name: webhookd-script
               mountPath: /scripts
               readOnly: true
+        {{- end }}
+
+        {{- with .Values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 
       volumes:
