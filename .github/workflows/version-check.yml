@@ -1,0 +1,89 @@
+name: Version Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  chart-version-bump:
+    name: Chart Version Bump
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check chart version is bumped
+        run: |
+          # Determine which files changed vs base branch
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+
+          if ! echo "$CHANGED" | grep -q '^charts/'; then
+            echo "✅ No chart files changed — skipping version bump check"
+            exit 0
+          fi
+
+          echo "Chart files changed:"
+          echo "$CHANGED" | grep '^charts/' | sed 's/^/  /'
+
+          # Compare chart version against base branch
+          BASE_VERSION=$(git show "origin/${{ github.base_ref }}:charts/openclaw/Chart.yaml" \
+            | grep '^version:' | awk '{print $2}')
+          PR_VERSION=$(grep '^version:' charts/openclaw/Chart.yaml | awk '{print $2}')
+
+          if [ "$BASE_VERSION" = "$PR_VERSION" ]; then
+            echo ""
+            echo "::error::Chart files changed but chart version was not bumped (still $PR_VERSION)."
+            echo "::error::Please bump 'version' in charts/openclaw/Chart.yaml."
+            echo ""
+            echo "The helm-publish workflow publishes the chart as an OCI artifact using this"
+            echo "version. Pushing the same version with different content breaks consumers."
+            exit 1
+          fi
+
+          echo "✅ Chart version bumped: $BASE_VERSION → $PR_VERSION"
+
+  app-version-sync:
+    name: App Version Sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check Dockerfile and Chart.yaml versions match
+        run: |
+          # Extract OPENCLAW_VERSION from Dockerfile ARG, strip leading 'v'
+          DOCKER_VERSION=$(grep '^ARG OPENCLAW_VERSION=' Dockerfile \
+            | cut -d= -f2 | sed 's/^v//')
+
+          if [ -z "$DOCKER_VERSION" ]; then
+            echo "::error::Could not find ARG OPENCLAW_VERSION in Dockerfile"
+            exit 1
+          fi
+
+          # Extract appVersion from Chart.yaml, strip quotes
+          APP_VERSION=$(grep '^appVersion:' charts/openclaw/Chart.yaml \
+            | awk '{print $2}' | tr -d '"')
+
+          if [ -z "$APP_VERSION" ]; then
+            echo "::error::Could not find appVersion in charts/openclaw/Chart.yaml"
+            exit 1
+          fi
+
+          if [ "$DOCKER_VERSION" != "$APP_VERSION" ]; then
+            echo ""
+            echo "::error::Version mismatch between Dockerfile and Chart.yaml"
+            echo ""
+            echo "  Dockerfile OPENCLAW_VERSION: v$DOCKER_VERSION"
+            echo "  Chart.yaml appVersion:       $APP_VERSION"
+            echo ""
+            echo "These must stay in sync. When updating OPENCLAW_VERSION in the Dockerfile,"
+            echo "also update appVersion in charts/openclaw/Chart.yaml (and bump the chart"
+            echo "version since the chart file is changing)."
+            exit 1
+          fi
+
+          echo "✅ Versions in sync: Dockerfile=v$DOCKER_VERSION, Chart.yaml=$APP_VERSION"
