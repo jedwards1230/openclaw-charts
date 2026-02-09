@@ -1,4 +1,4 @@
-FROM node:22-bookworm
+FROM node:25-bookworm
 
 # Install GitHub CLI (requires GitHub apt repo — not in standard Debian)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
