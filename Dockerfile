@@ -95,6 +95,10 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" \
       | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
 
+# Make openclaw CLI available in PATH (package.json declares bin but pnpm
+# doesn't link it globally during install; symlink the entry point directly)
+RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
+
 # Ensure node user owns everything
 RUN chown -R node:node /app
 
