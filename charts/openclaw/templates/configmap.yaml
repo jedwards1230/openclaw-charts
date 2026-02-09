@@ -6,6 +6,9 @@ metadata:
     {{- include "openclaw.labels" . | nindent 4 }}
 data:
   {{- $gatewayAuth := dict "mode" .Values.gateway.auth.mode "token" "${GATEWAY_AUTH_TOKEN}" }}
+  {{- if .Values.gateway.auth.allowTailscale }}
+  {{- $_ := set $gatewayAuth "allowTailscale" true }}
+  {{- end }}
   {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
   {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
   {{- $merged := merge (dict "gateway" $gateway) .Values.config }}

@@ -85,6 +85,12 @@ RUN mkdir -p /home/node/.cache/github-app-credential \
     && chmod 770 /home/node/.cache \
     && chmod 700 /home/node/.cache/github-app-credential
 
+# Install Tailscale CLI (for tailscale whois identity verification)
+ARG TAILSCALE_VERSION=1.82.5
+RUN ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" \
+      | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
+
 # Ensure node user owns everything
 RUN chown -R node:node /app
 

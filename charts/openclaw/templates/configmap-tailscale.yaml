@@ -1,0 +1,26 @@
+{{- if .Values.tailscale.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw.fullname" . }}-tailscale
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+data:
+  serve.json: |
+    {
+      "TCP": {
+        "443": {
+          "HTTPS": true
+        }
+      },
+      "Web": {
+        "*.ts.net:443": {
+          "Handlers": {
+            "/": {
+              "Proxy": "http://127.0.0.1:{{ .Values.gateway.port }}"
+            }
+          }
+        }
+      }
+    }
+{{- end }}
