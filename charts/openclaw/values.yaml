@@ -67,9 +67,9 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 # -- Envsubst init container image (runs as non-root, must include envsubst binary)
-# Uses Alpine with gettext package for envsubst. Pin to a versioned tag.
+# Pin to a versioned tag or digest — avoid :latest for supply-chain safety.
 envsubst:
-  image: alpine:3.21
+  image: dibi/envsubst:1
 
 # -- Secrets configuration
 secrets:
