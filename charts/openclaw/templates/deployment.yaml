@@ -187,6 +187,8 @@ spec:
                   key: {{ required "tailscale.authKeySecretKey is required when tailscale.enabled is true" .Values.tailscale.authKeySecretKey }}
             - name: TS_KUBE_SECRET
               value: ""
+            - name: KUBERNETES_SERVICE_HOST
+              value: ""
             - name: TS_STATE_DIR
               value: /var/lib/tailscale
             - name: TS_SOCKET
