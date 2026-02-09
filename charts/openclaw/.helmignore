@@ -1,0 +1,21 @@
+# Git
+.git/
+.github/
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# Build
+Dockerfile
+.dockerignore
+
+# Development
+worktrees/
+scripts/
+ci/
+
+# IDE
+.vscode/
+.idea/

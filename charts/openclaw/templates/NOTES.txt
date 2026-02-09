@@ -1,0 +1,151 @@
+{{- $fullname := include "openclaw.fullname" . -}}
+================================================================================
+OpenClaw {{ .Chart.Version }} (App: {{ .Values.image.tag | default .Chart.AppVersion }})
+================================================================================
+
+OpenClaw has been deployed to namespace: {{ .Release.Namespace }}
+
+{{ if .Values.ingress.enabled -}}
+🌐 INGRESS ACCESS
+-----------------
+OpenClaw is accessible via ingress at:
+
+  https://{{ .Values.ingress.host }}
+
+{{- if .Values.additionalIngresses }}
+{{- range .Values.additionalIngresses }}
+{{- if .enabled }}
+  {{ .path }} → https://{{ .host }}{{ .path }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- else if eq .Values.service.type "NodePort" }}
+📍 NODEPORT ACCESS
+------------------
+OpenClaw is exposed via NodePort. Get the node port with:
+
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ $fullname }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "Access OpenClaw at http://$NODE_IP:$NODE_PORT"
+
+{{- else if eq .Values.service.type "LoadBalancer" }}
+☁️  LOADBALANCER ACCESS
+-----------------------
+OpenClaw is exposed via LoadBalancer. Get the external IP with:
+
+  kubectl get svc --namespace {{ .Release.Namespace }} {{ $fullname }} -w
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+Once available, access OpenClaw at:
+
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ $fullname }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "http://$SERVICE_IP:{{ .Values.service.port }}"
+
+{{- else }}
+🔌 CLUSTERIP ACCESS
+-------------------
+OpenClaw is only accessible within the cluster. Use port-forward to access it:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ $fullname }} {{ .Values.gateway.port }}:{{ .Values.service.port }}
+
+Then access OpenClaw at: http://localhost:{{ .Values.gateway.port }}
+
+{{- end }}
+
+{{ if .Values.tailscale.enabled -}}
+🔗 TAILSCALE ACCESS
+-------------------
+OpenClaw is also accessible on your tailnet:
+
+{{- if .Values.tailscale.hostname }}
+  Hostname: {{ .Values.tailscale.hostname }}
+  URL: https://{{ .Values.tailscale.hostname }}.YOUR_TAILNET.ts.net:{{ .Values.gateway.port }}
+{{- else }}
+  Check your Tailscale admin console for the auto-generated hostname.
+{{- end }}
+
+Note: The OpenClaw container stays bound to LAN, so Traefik ingress continues working.
+
+{{- end }}
+
+{{ if .Values.webhookd.enabled -}}
+🪝 WEBHOOK ENDPOINT
+-------------------
+Webhookd sidecar is enabled for GitHub webhook signature verification.
+
+Webhook endpoint: /hooks{{ .Values.webhookd.targetPath }}
+
+Configure your GitHub webhook to POST to this endpoint. Webhookd will:
+  1. Verify X-Hub-Signature-256 HMAC
+  2. Forward verified webhooks to OpenClaw at {{ .Values.webhookd.targetPath }}
+
+{{- end }}
+
+📊 HEALTH CHECK
+---------------
+Check pod status:
+
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}"
+
+Check pod readiness:
+
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}'
+
+📜 VIEW LOGS
+------------
+Tail OpenClaw logs:
+
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container openclaw
+
+{{- if .Values.webhookd.enabled }}
+
+Tail webhookd logs:
+
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container webhookd
+
+{{- end }}
+
+{{- if .Values.tailscale.enabled }}
+
+Tail Tailscale logs:
+
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container tailscale
+
+{{- end }}
+
+📋 CONFIGURATION
+----------------
+{{- if .Values.secrets.onepassword.enabled }}
+Secrets: Managed by 1Password Operator
+  Item: {{ .Values.secrets.onepassword.itemPath }}
+{{- else if .Values.secrets.existingSecret }}
+Secrets: Using existing secret: {{ .Values.secrets.existingSecret }}
+{{- else }}
+Secrets: Expects secret "{{ $fullname }}-secrets" to exist. Create it manually or set secrets.existingSecret / secrets.onepassword.enabled.
+{{- end }}
+
+{{- if .Values.persistence.nfs.enabled }}
+Storage: NFS ({{ .Values.persistence.nfs.server }}:{{ .Values.persistence.nfs.path }})
+{{- else }}
+Storage: PVC ({{ .Values.persistence.size }}, {{ index .Values.persistence.accessModes 0 }})
+{{- end }}
+
+Gateway port: {{ .Values.gateway.port }}
+Gateway bind: {{ .Values.gateway.bind }}
+Auth mode: {{ .Values.gateway.auth.mode }}
+{{- if .Values.gateway.auth.allowTailscale }}
+Tailscale identity-header auth: Enabled
+{{- end }}
+
+📚 NEXT STEPS
+-------------
+1. Verify the pod is running and ready (see health check above)
+2. Access the OpenClaw UI (see access instructions above)
+3. Configure agents, channels, and tools in openclaw.json via values.yaml
+4. Monitor logs for any startup issues
+
+For more information, visit: https://github.com/jedwards1230/openclaw-charts
+
+================================================================================

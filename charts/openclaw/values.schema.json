@@ -1,0 +1,531 @@
+{
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["image", "replicaCount", "gateway"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "description": "Container image configuration",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "description": "Image pull secrets for private registries",
+      "items": {
+        "type": "object"
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "description": "Number of replicas",
+      "minimum": 1
+    },
+    "strategy": {
+      "type": "object",
+      "description": "Deployment strategy configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["Recreate", "RollingUpdate"]
+        }
+      },
+      "additionalProperties": true
+    },
+    "gateway": {
+      "type": "object",
+      "description": "OpenClaw gateway configuration (templated into openclaw.json)",
+      "required": ["port"],
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "bind": {
+          "type": "string"
+        },
+        "auth": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string"
+            },
+            "allowTailscale": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        },
+        "controlUi": {
+          "type": "object",
+          "properties": {
+            "allowInsecureAuth": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "config": {
+      "type": "object",
+      "description": "Freeform app config (merged with gateway into openclaw.json)"
+    },
+    "extraEnv": {
+      "type": "array",
+      "description": "Extra environment variables for the main container",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "valueFrom": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "description": "Git identity for commits",
+      "properties": {
+        "authorName": {
+          "type": "string"
+        },
+        "authorEmail": {
+          "type": "string",
+          "format": "email"
+        },
+        "committerName": {
+          "type": "string"
+        },
+        "committerEmail": {
+          "type": "string",
+          "format": "email"
+        },
+        "configGlobal": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "nodeOptions": {
+      "type": "string",
+      "description": "Node.js options"
+    },
+    "homePath": {
+      "type": "string",
+      "description": "Home directory path inside the container"
+    },
+    "envsubst": {
+      "type": "object",
+      "description": "Envsubst init container image configuration",
+      "properties": {
+        "image": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "secrets": {
+      "type": "object",
+      "description": "Secrets configuration",
+      "properties": {
+        "existingSecret": {
+          "type": "string"
+        },
+        "onepassword": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "itemPath": {
+              "type": "string"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "itemPath": {
+                    "minLength": 1
+                  }
+                },
+                "required": ["itemPath"]
+              }
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "persistence": {
+      "type": "object",
+      "description": "NFS persistence for openclaw workspace/config",
+      "properties": {
+        "size": {
+          "type": "string"
+        },
+        "accessModes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nfs": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "server": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "server": {
+                    "minLength": 1
+                  },
+                  "path": {
+                    "minLength": 1
+                  }
+                },
+                "required": ["server", "path"]
+              }
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Ingress configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "tls": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": false
+    },
+    "additionalIngresses": {
+      "type": "array",
+      "description": "Additional ingresses for separate access rules",
+      "items": {
+        "type": "object",
+        "required": ["name", "enabled"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "pathType": {
+            "type": "string"
+          },
+          "annotations": {
+            "type": "object"
+          },
+          "tls": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "description": "Service configuration",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "additionalProperties": false
+    },
+    "serviceAccount": {
+      "type": "object",
+      "description": "ServiceAccount configuration",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource requests and limits",
+      "properties": {
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "description": "Pod security context"
+    },
+    "securityContext": {
+      "type": "object",
+      "description": "Container security context"
+    },
+    "podAnnotations": {
+      "type": "object",
+      "description": "Pod annotations (e.g., Velero backup hooks)"
+    },
+    "priorityClassName": {
+      "type": "string",
+      "description": "Priority class name for scheduling priority"
+    },
+    "probes": {
+      "type": "object",
+      "description": "Override default health probes (TCP socket on gateway port)",
+      "properties": {
+        "startup": {
+          "type": "object"
+        },
+        "liveness": {
+          "type": "object"
+        },
+        "readiness": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "webhookd": {
+      "type": "object",
+      "description": "Webhookd sidecar: GitHub webhook signature verification proxy",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          }
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "targetPath": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tailscale": {
+      "type": "object",
+      "description": "Tailscale sidecar: expose the gateway on your tailnet",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "authKeySecret": {
+          "type": "string"
+        },
+        "authKeySecretKey": {
+          "type": "string"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "authKeySecret": {
+                "minLength": 1
+              }
+            },
+            "required": ["authKeySecret"]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "podLabels": {
+      "type": "object",
+      "description": "Additional pod labels"
+    },
+    "networkPolicy": {
+      "type": "object",
+      "description": "Network policy configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extraVolumeMounts": {
+      "type": "array",
+      "description": "Extra volume mounts for the main container",
+      "items": {
+        "type": "object"
+      }
+    },
+    "extraVolumes": {
+      "type": "array",
+      "description": "Extra volumes for the pod",
+      "items": {
+        "type": "object"
+      }
+    },
+    "nodeSelector": {
+      "type": "object",
+      "description": "Node selector for pod scheduling"
+    },
+    "tolerations": {
+      "type": "array",
+      "description": "Tolerations for pod scheduling",
+      "items": {
+        "type": "object"
+      }
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Affinity rules for pod scheduling"
+    },
+    "topologySpreadConstraints": {
+      "type": "array",
+      "description": "Topology spread constraints for pod scheduling",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

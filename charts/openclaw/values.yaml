@@ -216,7 +216,23 @@ podLabels: {}
 networkPolicy:
   enabled: false
 
+# -- Extra volume mounts for the main container
+# Example:
+#   extraVolumeMounts:
+#     - name: dev-workspace
+#       mountPath: /mnt/dev
+extraVolumeMounts: []
+
+# -- Extra volumes for the pod
+# Example:
+#   extraVolumes:
+#     - name: dev-workspace
+#       persistentVolumeClaim:
+#         claimName: openclaw-dev-workspace
+extraVolumes: []
+
 nodeSelector:
   kubernetes.io/arch: amd64
 tolerations: []
 affinity: {}
+topologySpreadConstraints: []

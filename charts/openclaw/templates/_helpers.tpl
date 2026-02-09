@@ -43,6 +43,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Selector labels as a flat comma-separated string for kubectl -l flags
+*/}}
+{{- define "openclaw.selectorLabelsFlat" -}}
+app.kubernetes.io/name={{ include "openclaw.name" . }},app.kubernetes.io/instance={{ .Release.Name }}
+{{- end }}
+
+{{/*
 Secret name — existingSecret takes precedence, then release-name-secrets
 */}}
 {{- define "openclaw.secretName" -}}
