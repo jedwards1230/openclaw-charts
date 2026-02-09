@@ -16,6 +16,8 @@ gateway:
   bind: "lan"
   auth:
     mode: "token"
+    # -- Allow Tailscale identity-header authentication (tailscale whois)
+    allowTailscale: false
   controlUi:
     allowInsecureAuth: true
 
@@ -171,6 +173,32 @@ webhookd:
     limits:
       cpu: 100m
       memory: 64Mi
+
+# -- Tailscale sidecar: expose the gateway on your tailnet
+# When enabled, a Tailscale sidecar container runs alongside OpenClaw,
+# providing a tailnet hostname via `tailscale serve`. The OpenClaw container
+# stays on LAN binding so Traefik ingress continues working.
+tailscale:
+  enabled: false
+  # -- Existing secret containing the Tailscale auth key
+  authKeySecret: ""
+  # -- Key within the secret that holds the auth key value
+  authKeySecretKey: "TS_AUTHKEY"
+  # -- Hostname on the tailnet (e.g., "openclaw")
+  hostname: ""
+  # -- Tailscale image
+  image:
+    repository: ghcr.io/tailscale/tailscale
+    tag: "v1.82.5"
+    pullPolicy: IfNotPresent
+  # -- Sidecar resource limits
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
 
 # -- Additional pod labels
 # Note: Pod Security Admission (PSA) labels (pod-security.kubernetes.io/*)

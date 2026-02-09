@@ -24,6 +24,9 @@ spec:
         {{- if .Values.webhookd.enabled }}
         checksum/webhookd: {{ include (print $.Template.BasePath "/configmap-webhookd.yaml") . | sha256sum }}
         {{- end }}
+        {{- if .Values.tailscale.enabled }}
+        checksum/tailscale: {{ include (print $.Template.BasePath "/configmap-tailscale.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -96,6 +99,10 @@ spec:
               value: {{ .Values.git.committerName | quote }}
             - name: GIT_COMMITTER_EMAIL
               value: {{ .Values.git.committerEmail | quote }}
+            {{- if .Values.tailscale.enabled }}
+            - name: TS_SOCKET
+              value: "/var/run/tailscale/tailscaled.sock"
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -156,6 +163,54 @@ spec:
           volumeMounts:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
+            {{- if .Values.tailscale.enabled }}
+            - name: tailscale-socket
+              mountPath: /var/run/tailscale
+              readOnly: true
+            {{- end }}
+
+        {{- if .Values.tailscale.enabled }}
+        - name: tailscale
+          image: "{{ .Values.tailscale.image.repository }}:{{ .Values.tailscale.image.tag }}"
+          imagePullPolicy: {{ .Values.tailscale.image.pullPolicy }}
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tailscale.authKeySecret }}
+                  key: {{ .Values.tailscale.authKeySecretKey }}
+            - name: TS_STATE_DIR
+              value: /var/lib/tailscale
+            - name: TS_SOCKET
+              value: /var/run/tailscale/tailscaled.sock
+            - name: TS_USERSPACE
+              value: "true"
+            - name: TS_SERVE_CONFIG
+              value: /config/serve.json
+            {{- if .Values.tailscale.hostname }}
+            - name: TS_EXTRA_ARGS
+              value: "--hostname={{ .Values.tailscale.hostname }}"
+            {{- end }}
+          {{- with .Values.tailscale.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            - name: tailscale-socket
+              mountPath: /var/run/tailscale
+            - name: tailscale-serve-config
+              mountPath: /config
+              readOnly: true
+        {{- end }}
 
         {{- if .Values.webhookd.enabled }}
         - name: webhookd
@@ -225,6 +280,15 @@ spec:
         - name: webhookd-script
           configMap:
             name: {{ include "openclaw.fullname" . }}-webhookd
+        {{- end }}
+        {{- if .Values.tailscale.enabled }}
+        - name: tailscale-state
+          emptyDir: {}
+        - name: tailscale-socket
+          emptyDir: {}
+        - name: tailscale-serve-config
+          configMap:
+            name: {{ include "openclaw.fullname" . }}-tailscale
         {{- end }}
 
       {{- with .Values.nodeSelector }}
