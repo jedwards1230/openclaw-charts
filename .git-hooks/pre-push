@@ -1,0 +1,26 @@
+#!/bin/bash
+# pre-push hook: Warn when pushing from main/master branches
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+PROTECTED_BRANCHES=("main" "master")
+
+# Check if current branch is protected
+for protected in "${PROTECTED_BRANCHES[@]}"; do
+    if [[ "$BRANCH" == "$protected" ]]; then
+        echo "⚠️  WARNING: You are pushing from '$BRANCH' branch!"
+        echo ""
+        echo "This is unusual. Typically you should:"
+        echo "  1. Work in a worktree"
+        echo "  2. Push feature branches"
+        echo "  3. Merge via PR"
+        echo ""
+        read -p "Continue anyway? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Push cancelled."
+            exit 1
+        fi
+    fi
+done
+
+exit 0

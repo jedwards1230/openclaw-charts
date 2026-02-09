@@ -1,0 +1,25 @@
+#!/bin/bash
+# pre-commit hook: Block commits to main/master branches
+# Enforce worktree workflow pattern
+
+set -e
+
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null || echo "detached")
+PROTECTED_BRANCHES=("main" "master")
+
+# Check if current branch is protected
+for protected in "${PROTECTED_BRANCHES[@]}"; do
+    if [[ "$BRANCH" == "$protected" ]]; then
+        echo "❌ ERROR: Direct commits to '$BRANCH' are not allowed!"
+        echo ""
+        echo "Use a worktree instead:"
+        echo "  git worktree add worktrees/my-feature -b my-feature origin/$BRANCH"
+        echo ""
+        echo "To bypass this check (use with caution):"
+        echo "  git commit --no-verify"
+        exit 1
+    fi
+done
+
+# Success - branch is safe to commit to
+exit 0
