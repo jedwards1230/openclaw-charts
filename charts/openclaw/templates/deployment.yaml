@@ -188,8 +188,8 @@ spec:
             - name: TS_SERVE_CONFIG
               value: /config/serve.json
             {{- if .Values.tailscale.hostname }}
-            - name: TS_EXTRA_ARGS
-              value: "--hostname={{ .Values.tailscale.hostname }}"
+            - name: TS_HOSTNAME
+              value: {{ .Values.tailscale.hostname | quote }}
             {{- end }}
           {{- with .Values.tailscale.resources }}
           resources:
@@ -197,8 +197,9 @@ spec:
           {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
-            runAsUser: 1000
-            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+            runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
             capabilities:
               drop:
                 - ALL

@@ -11,6 +11,7 @@ This customized build includes:
 - **GitHub CLI (`gh`)** pre-installed for seamless GitHub interactions
 - **GitHub App credential helper** for bot-identity authentication (git + gh)
 - **Custom Helm chart** tailored for Kubernetes homelab deployments
+- **Tailscale sidecar** for direct tailnet access with identity-based authentication
 - **Personal homelab optimizations** including NFS storage support, 1Password integration, and multi-ingress routing
 
 ## Image
@@ -76,6 +77,47 @@ The credential helper chain falls back gracefully — if GitHub App env vars are
 | `GITHUB_APP_PRIVATE_KEY` | PEM private key content |
 
 Tokens are cached for ~55 minutes (5-minute buffer on the 1-hour lifetime), stored at `~/.cache/github-app-credential/token.json` with `0600` permissions.
+
+## Tailscale Sidecar
+
+The chart supports an optional Tailscale sidecar that exposes the OpenClaw gateway directly on your tailnet via `tailscale serve`. This enables direct access from any device on the tailnet without going through Traefik ingress.
+
+### How it works
+
+Instead of using OpenClaw's native `--tailscale` flag (which would conflict with the LAN binding needed for Traefik ingress), the chart runs a separate Tailscale sidecar container that:
+
+1. Joins the tailnet using an auth key from a Kubernetes secret
+2. Uses `tailscale serve` to reverse-proxy HTTPS traffic to the OpenClaw gateway on `127.0.0.1:18789`
+3. Shares the Tailscale socket with the main container via an emptyDir volume, enabling `tailscale whois` for identity-based authentication
+
+The Docker image includes the `tailscale` CLI so the main OpenClaw container can call `tailscale whois` to verify caller identity from the shared socket. When `gateway.auth.allowTailscale` is enabled, requests arriving over Tailscale can authenticate using their tailnet identity instead of a token.
+
+### Configuration
+
+```yaml
+tailscale:
+  enabled: true
+  authKeySecret: "my-tailscale-secret"   # K8s secret with the auth key
+  authKeySecretKey: "TS_AUTHKEY"          # Key within the secret (default)
+  hostname: "openclaw"                    # Tailnet hostname (e.g., openclaw.tailnet-name.ts.net)
+
+gateway:
+  auth:
+    allowTailscale: true                  # Enable tailscale identity auth
+```
+
+### Required values
+
+| Value | Description | Required |
+|-------|-------------|----------|
+| `tailscale.enabled` | Enable the Tailscale sidecar | Yes |
+| `tailscale.authKeySecret` | Name of K8s secret containing the Tailscale auth key | Yes |
+| `tailscale.hostname` | Hostname on the tailnet | Recommended |
+| `gateway.auth.allowTailscale` | Allow Tailscale identity-header authentication | Recommended |
+
+### Tailscale ACL requirements
+
+The auth key should be created with a tag that has appropriate ACL permissions. The Tailscale node will appear on your tailnet as `<hostname>.tailnet-name.ts.net`.
 
 ## CI/CD
 
