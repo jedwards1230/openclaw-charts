@@ -46,8 +46,10 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 | `image.tag` | Image tag | `latest` |
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |
-| `discord.enabled` | Enable Discord channel | `true` |
-| `agents.defaults.model.primary` | Default LLM model | `anthropic/claude-sonnet-4-5` |
+| `gateway.controlUi.allowInsecureAuth` | Allow non-HTTPS auth for control UI | `false` |
+| `config` | Freeform openclaw.json config (agents, channels, tools, etc.) | `{}` |
+| `webhookd.enabled` | Enable GitHub webhook HMAC verification sidecar | `false` |
+| `networkPolicy.enabled` | Enable Kubernetes NetworkPolicy | `false` |
 | `secrets.onepassword.enabled` | Use 1Password operator | `false` |
 | `persistence.nfs.enabled` | Use NFS for storage | `false` |
 | `ingress.enabled` | Enable ingress | `false` |
@@ -76,6 +78,46 @@ The credential helper chain falls back gracefully — if GitHub App env vars are
 | `GITHUB_APP_PRIVATE_KEY` | PEM private key content |
 
 Tokens are cached for ~55 minutes (5-minute buffer on the 1-hour lifetime), stored at `~/.cache/github-app-credential/token.json` with `0600` permissions.
+
+## Webhookd Sidecar
+
+The chart includes an optional webhook verification sidecar (`webhookd.enabled: true`) that validates GitHub webhook signatures before forwarding to OpenClaw.
+
+**What it does:**
+- Receives GitHub webhook POSTs on a separate port
+- Verifies `X-Hub-Signature-256` HMAC using `timingSafeEqual`
+- Forwards verified requests to OpenClaw's `/hooks/agent` endpoint with the `x-openclaw-token` header
+- Rejects unsigned or tampered payloads with `401 Unauthorized`
+- Enforces a 1 MB payload size limit
+
+**Required secrets** (in addition to `WEBHOOK_TOKEN`):
+- `GITHUB_WEBHOOK_SECRET` — the secret configured in your GitHub webhook settings
+
+Route `/hooks` traffic to the webhookd sidecar using `additionalIngresses` with `servicePort: webhookd`:
+
+```yaml
+additionalIngresses:
+  - name: webhook
+    enabled: true
+    host: openclaw.example.com
+    path: /hooks
+    pathType: Prefix
+    servicePort: webhookd  # routes to the webhookd sidecar, not the main gateway
+```
+
+This keeps the main UI on a separate, LAN-restricted ingress.
+
+## Security Considerations
+
+**`gateway.controlUi.allowInsecureAuth`** (default: `false`) — Controls whether the control UI accepts authentication over non-HTTPS connections. Set to `true` only for local development without TLS.
+
+**`securityContext.readOnlyRootFilesystem`** (default: `true`) — The container filesystem is read-only. Writable paths (`/tmp`, `~/.cache`, `~/.npm`) are provided via emptyDir mounts. The persistent workspace is mounted at `~/.openclaw`.
+
+**`networkPolicy.enabled`** (default: `false`) — When enabled, applies a NetworkPolicy that allows ingress from Traefik and other pods in the same namespace, and allows egress only to DNS, HTTP (TCP/80), HTTPS (TCP/443), and the in-namespace `mcp-proxy` service on TCP/8080. Recommended for production deployments.
+
+**Image tags** — The default `image.tag` is `latest`. For production, pin to a specific SHA tag from the build workflow.
+
+**`envsubst` init container** — Uses `dibi/envsubst:1` by default. Pin to a specific digest for maximum supply-chain safety.
 
 ## CI/CD
 
