@@ -22,6 +22,9 @@ spec:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- if .Values.secrets.onepassword.enabled }}
+        {{- /* NOTE: This checksums the OnePasswordItem spec, not the resulting Secret data.
+               If the 1Password Operator rotates secret contents without spec changes,
+               pods won't auto-restart. Use kubectl rollout restart for manual rotation. */}}
         checksum/secret: {{ include (print $.Template.BasePath "/onepassworditem.yaml") . | sha256sum }}
         {{- end }}
         {{- if .Values.webhookd.enabled }}

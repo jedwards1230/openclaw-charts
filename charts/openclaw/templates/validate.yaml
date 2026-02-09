@@ -28,15 +28,10 @@ Uses Helm's fail function to halt deployment with clear error messages.
 {{- end }}
 {{- end }}
 
-{{/* Validate: secrets — must have either existingSecret or onepassword enabled */}}
-{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}
-{{- fail "No secret source configured. Set either secrets.existingSecret or enable secrets.onepassword." }}
-{{- end }}
-
-{{/* Validate: webhookd requires a secret (for GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN) */}}
+{{/* Validate: webhookd requires an explicit secret source (for GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN) */}}
 {{- if .Values.webhookd.enabled }}
 {{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.onepassword.enabled) }}
-{{- fail "webhookd.enabled is true but no secret source is configured. Webhookd requires GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN keys in a Secret." }}
+{{- fail "webhookd.enabled is true but no secret source is configured. Webhookd requires GITHUB_WEBHOOK_SECRET and WEBHOOK_TOKEN keys in a Secret. Set secrets.existingSecret or enable secrets.onepassword." }}
 {{- end }}
 {{- end }}
 

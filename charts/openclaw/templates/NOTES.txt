@@ -1,5 +1,4 @@
 {{- $fullname := include "openclaw.fullname" . -}}
-{{- $selectorLabels := include "openclaw.selectorLabels" . -}}
 ================================================================================
 OpenClaw {{ .Chart.Version }} (App: {{ .Values.image.tag | default .Chart.AppVersion }})
 ================================================================================
@@ -88,23 +87,23 @@ Configure your GitHub webhook to POST to this endpoint. Webhookd will:
 ---------------
 Check pod status:
 
-  kubectl get pods --namespace {{ .Release.Namespace }} -l {{ $selectorLabels | replace "\n" "," }}
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}"
 
 Check pod readiness:
 
-  kubectl get pods --namespace {{ .Release.Namespace }} -l {{ $selectorLabels | replace "\n" "," }} -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}'
+  kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}'
 
 📜 VIEW LOGS
 ------------
 Tail OpenClaw logs:
 
-  kubectl logs --namespace {{ .Release.Namespace }} -l {{ $selectorLabels | replace "\n" "," }} -f --container openclaw
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container openclaw
 
 {{- if .Values.webhookd.enabled }}
 
 Tail webhookd logs:
 
-  kubectl logs --namespace {{ .Release.Namespace }} -l {{ $selectorLabels | replace "\n" "," }} -f --container webhookd
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container webhookd
 
 {{- end }}
 
@@ -112,7 +111,7 @@ Tail webhookd logs:
 
 Tail Tailscale logs:
 
-  kubectl logs --namespace {{ .Release.Namespace }} -l {{ $selectorLabels | replace "\n" "," }} -f --container tailscale
+  kubectl logs --namespace {{ .Release.Namespace }} -l "{{ include "openclaw.selectorLabelsFlat" . }}" -f --container tailscale
 
 {{- end }}
 
@@ -124,7 +123,7 @@ Secrets: Managed by 1Password Operator
 {{- else if .Values.secrets.existingSecret }}
 Secrets: Using existing secret: {{ .Values.secrets.existingSecret }}
 {{- else }}
-Secrets: Using generated secret: {{ $fullname }}-secrets
+Secrets: Expects secret "{{ $fullname }}-secrets" to exist. Create it manually or set secrets.existingSecret / secrets.onepassword.enabled.
 {{- end }}
 
 {{- if .Values.persistence.nfs.enabled }}
