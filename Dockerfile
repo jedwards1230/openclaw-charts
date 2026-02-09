@@ -1,5 +1,9 @@
 FROM node:22-bookworm
 
+LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
+LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, and Tailscale"
+LABEL org.opencontainers.image.licenses="MIT"
+
 # Install GitHub CLI (requires GitHub apt repo — not in standard Debian)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \

@@ -36,7 +36,7 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 envsubst:
-  image: dibi/envsubst:1
+  image: alpine:3.21
 
 secrets:
   existingSecret: ""
@@ -136,5 +136,17 @@ extraVolumes: []
 nodeSelector:
   kubernetes.io/arch: amd64
 tolerations: []
-affinity: {}
+# Pod anti-affinity: prefer spreading across nodes (useful if replicaCount > 1)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - openclaw
+          topologyKey: kubernetes.io/hostname
 topologySpreadConstraints: []

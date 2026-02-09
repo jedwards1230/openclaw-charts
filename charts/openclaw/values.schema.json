@@ -1,8 +1,18 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenClaw Helm Chart Values",
   "type": "object",
   "additionalProperties": true,
   "required": ["image", "replicaCount", "gateway"],
   "properties": {
+    "nameOverride": {
+      "type": "string",
+      "description": "Override the chart name"
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the full release name"
+    },
     "image": {
       "type": "object",
       "description": "Container image configuration",
@@ -104,6 +114,13 @@
             "type": "object"
           }
         }
+      }
+    },
+    "extraEnvFrom": {
+      "type": "array",
+      "description": "Extra environment variables from secrets/configmaps (bulk injection)",
+      "items": {
+        "type": "object"
       }
     },
     "git": {
@@ -304,6 +321,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 65535
+        },
+        "targetPort": {
+          "type": ["string", "integer"],
+          "description": "Target port on the container (defaults to gateway.port)"
         }
       },
       "additionalProperties": false
@@ -490,6 +511,20 @@
         }
       },
       "additionalProperties": false
+    },
+    "extraInitContainers": {
+      "type": "array",
+      "description": "Extra init containers (in addition to envsubst and tailscale-init)",
+      "items": {
+        "type": "object"
+      }
+    },
+    "extraContainers": {
+      "type": "array",
+      "description": "Extra sidecar containers (in addition to tailscale and webhookd)",
+      "items": {
+        "type": "object"
+      }
     },
     "extraVolumeMounts": {
       "type": "array",

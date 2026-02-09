@@ -36,7 +36,7 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 envsubst:
-  image: dibi/envsubst:1
+  image: alpine:3.21
 
 secrets:
   existingSecret: ""

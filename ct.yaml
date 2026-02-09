@@ -1,0 +1,19 @@
+# Chart Testing configuration for OpenClaw Helm chart
+# Used by helm/chart-testing (ct) in CI for standardized validation
+# Reference: https://github.com/helm/chart-testing/blob/main/doc/ct.md
+
+remote: origin
+target-branch: main
+
+chart-dirs:
+  - charts
+
+# Skip version increment check — handled by version-check.yml which also
+# validates Dockerfile/Chart.yaml app version sync
+check-version-increment: false
+
+helm-extra-args: --timeout 600s --set secrets.existingSecret=lint-token
+
+validate-maintainers: true
+validate-chart-schema: true
+validate-yaml: true

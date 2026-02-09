@@ -1,3 +1,8 @@
+# -- Override the chart name
+nameOverride: ""
+# -- Override the full release name
+fullnameOverride: ""
+
 image:
   repository: ghcr.io/jedwards1230/openclaw-charts
   tag: latest
@@ -38,6 +43,15 @@ config: {}
 #           key: MY_KEY
 extraEnv: []
 
+# -- Extra environment variables from secrets/configmaps (bulk injection)
+# Example:
+#   extraEnvFrom:
+#     - secretRef:
+#         name: my-secret
+#     - configMapRef:
+#         name: my-config
+extraEnvFrom: []
+
 # -- Git identity for commits
 git:
   authorName: "LilClaw"
@@ -53,9 +67,9 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 # -- Envsubst init container image (runs as non-root, must include envsubst binary)
-# Pin to a versioned tag or digest — avoid :latest for supply-chain safety.
+# Uses Alpine with gettext package for envsubst. Pin to a versioned tag.
 envsubst:
-  image: dibi/envsubst:1
+  image: alpine:3.21
 
 # -- Secrets configuration
 secrets:
@@ -105,6 +119,8 @@ additionalIngresses: []
 service:
   type: ClusterIP
   port: 18789
+  # -- Target port on the container (defaults to gateway.port if not set)
+  targetPort: ""
 
 # -- ServiceAccount configuration
 serviceAccount:
@@ -230,6 +246,21 @@ extraVolumeMounts: []
 #       persistentVolumeClaim:
 #         claimName: openclaw-dev-workspace
 extraVolumes: []
+
+# -- Extra init containers (in addition to the built-in envsubst and tailscale-init)
+# Example:
+#   extraInitContainers:
+#     - name: wait-for-db
+#       image: busybox:1.36
+#       command: ["sh", "-c", "until nc -z db 5432; do sleep 2; done"]
+extraInitContainers: []
+
+# -- Extra sidecar containers (in addition to the built-in tailscale and webhookd)
+# Example:
+#   extraContainers:
+#     - name: log-forwarder
+#       image: fluent/fluent-bit:3.2
+extraContainers: []
 
 nodeSelector:
   kubernetes.io/arch: amd64
