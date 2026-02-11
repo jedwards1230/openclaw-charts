@@ -16,7 +16,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
 
 # Install CLI tools for K8s management (1Password CLI, kubectl, ArgoCD CLI)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gnupg \
+    && apt-get install -y --no-install-recommends gnupg jq unzip \
     # Install 1Password CLI
     && curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
       | gpg --dearmor -o /usr/share/keyrings/1password-archive-keyring.gpg \
@@ -41,6 +41,32 @@ RUN apt-get update \
     && case "${ARCH}" in amd64|arm64) ;; *) echo "Unsupported architecture for ArgoCD CLI: ${ARCH}" >&2; exit 1 ;; esac \
     && curl -fsSL -o /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-${ARCH}" \
     && chmod +x /usr/local/bin/argocd \
+    # Install yq (YAML processor)
+    && YQ_VERSION="v4.44.3" \
+    && YQ_ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL -o /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}" \
+    && chmod +x /usr/local/bin/yq \
+    # Install Helm (Kubernetes package manager)
+    && HELM_VERSION="v3.16.3" \
+    && HELM_ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${HELM_ARCH}.tar.gz" | tar xz -C /tmp \
+    && mv /tmp/linux-${HELM_ARCH}/helm /usr/local/bin/helm \
+    && chmod +x /usr/local/bin/helm \
+    && rm -rf /tmp/linux-${HELM_ARCH} \
+    # Install Helmfile (Helm release management)
+    && HELMFILE_VERSION="v1.2.2" \
+    && HELMFILE_ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://github.com/helmfile/helmfile/releases/download/${HELMFILE_VERSION}/helmfile_${HELMFILE_VERSION#v}_linux_${HELMFILE_ARCH}.tar.gz" | tar xz -C /tmp \
+    && mv /tmp/helmfile /usr/local/bin/helmfile \
+    && chmod +x /usr/local/bin/helmfile \
+    # Install Logcli (Loki CLI)
+    && LOGCLI_VERSION="v3.3.2" \
+    && LOGCLI_ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://github.com/grafana/loki/releases/download/${LOGCLI_VERSION}/logcli-linux-${LOGCLI_ARCH}.zip" -o /tmp/logcli.zip \
+    && unzip -q /tmp/logcli.zip -d /tmp \
+    && mv /tmp/logcli-linux-${LOGCLI_ARCH} /usr/local/bin/logcli \
+    && chmod +x /usr/local/bin/logcli \
+    && rm /tmp/logcli.zip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bun (required by OpenClaw build scripts)
