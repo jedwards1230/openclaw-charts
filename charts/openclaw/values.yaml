@@ -30,6 +30,14 @@ gateway:
 # -- Freeform app config (merged with gateway into openclaw.json)
 # Add any top-level openclaw.json keys here (agents, channels, tools, etc.)
 # These are serialized to JSON as-is — no chart update needed for config changes.
+#
+# Example: Add custom paths to PATH for exec tool
+# config:
+#   tools:
+#     exec:
+#       pathPrepend:
+#         - /workspace/bin
+#         - ~/bin
 config: {}
 
 # -- Extra environment variables for the main container
