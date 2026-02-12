@@ -1,7 +1,7 @@
 FROM node:22-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
-LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, and Tailscale"
+LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, and Tailscale"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Install GitHub CLI (requires GitHub apt repo — not in standard Debian)
@@ -67,6 +67,13 @@ RUN apt-get update \
     && mv /tmp/logcli-linux-${LOGCLI_ARCH} /usr/local/bin/logcli \
     && chmod +x /usr/local/bin/logcli \
     && rm /tmp/logcli.zip \
+    # Install promtool (Prometheus CLI)
+    && PROMTOOL_VERSION="v3.9.1" \
+    && PROMTOOL_ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://github.com/prometheus/prometheus/releases/download/${PROMTOOL_VERSION}/prometheus-${PROMTOOL_VERSION#v}.linux-${PROMTOOL_ARCH}.tar.gz" | tar xz -C /tmp \
+    && mv /tmp/prometheus-${PROMTOOL_VERSION#v}.linux-${PROMTOOL_ARCH}/promtool /usr/local/bin/promtool \
+    && chmod +x /usr/local/bin/promtool \
+    && rm -rf /tmp/prometheus-${PROMTOOL_VERSION#v}.linux-${PROMTOOL_ARCH} \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bun (required by OpenClaw build scripts)
