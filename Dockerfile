@@ -1,7 +1,7 @@
 FROM node:22-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
-LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, and Tailscale"
+LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, and Tailscale"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Install GitHub CLI (requires GitHub apt repo — not in standard Debian)
@@ -75,6 +75,14 @@ RUN apt-get update \
     && chmod +x /usr/local/bin/promtool \
     && rm -rf /tmp/prometheus-${PROMTOOL_VERSION#v}.linux-${PROMTOOL_ARCH} \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Go (enables Go-based scripts and tools)
+ARG GO_VERSION=1.26.0
+RUN ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" \
+      | tar -xzC /usr/local \
+    && /usr/local/go/bin/go version
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Install Bun (required by OpenClaw build scripts)
 ARG BUN_VERSION=1.3.9
