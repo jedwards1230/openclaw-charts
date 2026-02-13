@@ -154,13 +154,14 @@ RUN pnpm ui:build
 ENV NODE_ENV=production
 
 # Install MCP integration plugin (community extension, pinned commit)
-# Discovered automatically via /app/extensions/ path
-# Note: upstream stores openclaw.plugin.json in config/ — copy to root for discovery
+# Upstream stores openclaw.plugin.json in config/ — OpenClaw resolves package.json
+# "main" (src/index.js) and expects the manifest next to the entry point.
 ARG MCP_PLUGIN_COMMIT=fa9c22b9be58d1e1218014c93fb2c2a514cfc44b
 RUN git clone https://github.com/lunarpulse/openclaw-mcp-plugin.git extensions/mcp-integration \
     && cd extensions/mcp-integration \
     && git checkout ${MCP_PLUGIN_COMMIT} \
     && cp config/openclaw.plugin.json . \
+    && cp config/openclaw.plugin.json src/ \
     && npm install --production \
     && rm -rf .git
 
