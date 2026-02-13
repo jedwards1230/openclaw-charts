@@ -107,6 +107,14 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
+# Install MCP integration plugin (community extension)
+# Discovered automatically via /app/extensions/ path
+RUN git clone --depth 1 \
+      https://github.com/lunarpulse/openclaw-mcp-plugin.git extensions/mcp-integration \
+    && cd extensions/mcp-integration \
+    && npm install --production \
+    && rm -rf .git
+
 # Cache-bust: force rebuild 2026-02-08T15:28
 # GitHub App credential helper: generates installation tokens just-in-time
 # for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
