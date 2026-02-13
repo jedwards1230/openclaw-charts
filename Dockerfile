@@ -4,6 +4,11 @@ LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-
 LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, and Tailscale"
 LABEL org.opencontainers.image.licenses="MIT"
 
+# ═══════════════════════════════════════════════════════════════
+# Root operations: system packages, CLI tools, directory setup
+# Everything that needs write access to /usr, /etc, /home/node
+# ═══════════════════════════════════════════════════════════════
+
 # Install GitHub CLI (requires GitHub apt repo — not in standard Debian)
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
@@ -91,7 +96,48 @@ RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
 RUN corepack enable
 
+# Install Tailscale CLI (for tailscale whois identity verification)
+ARG TAILSCALE_VERSION=1.82.5
+RUN ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" \
+      | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
+
+# GitHub App credential helper: generates installation tokens just-in-time
+# for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
+COPY scripts/git-credential-github-app /usr/local/bin/git-credential-github-app
+RUN chmod +x /usr/local/bin/git-credential-github-app
+
+# gh wrapper: injects GitHub App token as GH_TOKEN before calling real gh.
+# Falls back to existing GITHUB_TOKEN/GH_TOKEN if App env vars aren't set.
+RUN mv /usr/bin/gh /usr/bin/gh-real \
+    && printf '#!/bin/sh\n\
+TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
+[ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"\n\
+exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
+    && chmod +x /usr/bin/gh
+
+# Make openclaw CLI available in PATH (package.json declares bin but pnpm
+# doesn't link it globally during install; dangling symlink resolves after build)
+RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
+
+# Prepare directories with correct ownership so all app files are created as
+# node user — eliminates the need for a costly `chown -R` layer at the end.
+# Cache dir uses 770 so fsGroup (podSecurityContext) can grant access when
+# the container runs as a different UID than the image default (uid 1000).
+RUN mkdir -p /app \
+    && chown node:node /app \
+    && mkdir -p /home/node/.cache/github-app-credential \
+    && chown -R node:node /home/node/.cache \
+    && chmod 770 /home/node/.cache \
+    && chmod 700 /home/node/.cache/github-app-credential
+
+# ═══════════════════════════════════════════════════════════════
+# Node user operations: app clone, build, plugins
+# All files created with correct ownership — no chown -R needed
+# ═══════════════════════════════════════════════════════════════
+
 WORKDIR /app
+USER node
 
 # Clone OpenClaw at pinned version and remove .git for smaller image
 ARG OPENCLAW_VERSION=v2026.2.6
@@ -107,43 +153,13 @@ RUN pnpm ui:build
 
 ENV NODE_ENV=production
 
-# Cache-bust: force rebuild 2026-02-08T15:28
-# GitHub App credential helper: generates installation tokens just-in-time
-# for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
-COPY scripts/git-credential-github-app /usr/local/bin/git-credential-github-app
-RUN chmod +x /usr/local/bin/git-credential-github-app
-
-# gh wrapper: injects GitHub App token as GH_TOKEN before calling real gh.
-# Falls back to existing GITHUB_TOKEN/GH_TOKEN if App env vars aren't set.
-RUN mv /usr/bin/gh /usr/bin/gh-real \
-    && printf '#!/bin/sh\n\
-TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
-[ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"\n\
-exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
-    && chmod +x /usr/bin/gh
-
-# Create cache directory for GitHub App credential helper.
-# Use 770 so fsGroup (set via podSecurityContext) can grant access when the
-# container runs as a different UID than the image default (uid 1000).
-RUN mkdir -p /home/node/.cache/github-app-credential \
-    && chown -R node:node /home/node/.cache \
-    && chmod 770 /home/node/.cache \
-    && chmod 700 /home/node/.cache/github-app-credential
-
-# Install Tailscale CLI (for tailscale whois identity verification)
-ARG TAILSCALE_VERSION=1.82.5
-RUN ARCH="$(dpkg --print-architecture)" \
-    && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" \
-      | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
-
-# Make openclaw CLI available in PATH (package.json declares bin but pnpm
-# doesn't link it globally during install; symlink the entry point directly)
-RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
-
-# Ensure node user owns everything
-RUN chown -R node:node /app
-
-# Run as non-root (node = uid 1000)
-USER node
+# Install MCP integration plugin (community extension, pinned commit)
+# Discovered automatically via /app/extensions/ path
+ARG MCP_PLUGIN_COMMIT=fa9c22b9be58d1e1218014c93fb2c2a514cfc44b
+RUN git clone https://github.com/lunarpulse/openclaw-mcp-plugin.git extensions/mcp-integration \
+    && cd extensions/mcp-integration \
+    && git checkout ${MCP_PLUGIN_COMMIT} \
+    && npm install --production \
+    && rm -rf .git
 
 CMD ["node", "dist/index.js", "gateway", "--allow-unconfigured", "--bind", "lan"]
