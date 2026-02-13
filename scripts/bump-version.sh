@@ -47,11 +47,7 @@ sed -i "s|OPENCLAW_VERSION=v${CURRENT}|OPENCLAW_VERSION=v${NEW_VERSION}|g" \
 sed -i "s|appVersion: \"${CURRENT}\"|appVersion: \"${NEW_VERSION}\"|" \
   "$CHART_YAML"
 
-# 3. build.yml — description example
-sed -i "s|v${CURRENT}|v${NEW_VERSION}|g" \
-  "$REPO_ROOT/.github/workflows/build.yml"
-
-# 4. README.md — doc examples
+# 3. README.md — doc examples
 sed -i "s|v${CURRENT}|v${NEW_VERSION}|g" \
   "$REPO_ROOT/README.md"
 
