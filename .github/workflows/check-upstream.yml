@@ -1,0 +1,139 @@
+name: Check Upstream Release
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # Daily at noon UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  UPSTREAM_REPO: openclaw/openclaw
+  BRANCH_NAME: auto/bump-openclaw
+
+jobs:
+  check:
+    name: Check for New Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep '^appVersion:' charts/openclaw/Chart.yaml \
+            | awk '{print $2}' | tr -d '"')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Current appVersion: $VERSION"
+
+      - name: Get latest upstream release
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest" \
+            --jq '.tag_name')
+          # Strip leading 'v'
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest upstream: $TAG ($VERSION)"
+
+      - name: Compare versions
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.upstream.outputs.version }}" ]; then
+            echo "Up to date — nothing to do"
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version available: ${{ steps.current.outputs.version }} → ${{ steps.upstream.outputs.version }}"
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for existing PR
+        if: steps.compare.outputs.needs_update == 'true'
+        id: existing_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --state open \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Found existing PR: #$PR_NUMBER"
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No existing PR found"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or reset branch
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "${{ env.BRANCH_NAME }}" origin/main
+
+      - name: Run bump script
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          ./scripts/bump-version.sh "${{ steps.upstream.outputs.version }}" --bump-chart
+
+      - name: Commit and push
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          git add -A
+          git commit -m "$(cat <<EOF
+          chore: bump openclaw to ${{ steps.upstream.outputs.tag }}
+
+          Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
+          EOF
+          )"
+          git push --force-with-lease origin "${{ env.BRANCH_NAME }}"
+
+      - name: Create PR
+        if: steps.compare.outputs.needs_update == 'true' && steps.existing_pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}" \
+            --body "$(cat <<'EOF'
+          ## Summary
+
+          Automated version bump from upstream release.
+
+          - **Current**: v${{ steps.current.outputs.version }}
+          - **New**: ${{ steps.upstream.outputs.tag }}
+          - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
+
+          > Created automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.
+          EOF
+          )" \
+            --head "${{ env.BRANCH_NAME }}" \
+            --base main
+
+      - name: Update existing PR
+        if: steps.compare.outputs.needs_update == 'true' && steps.existing_pr.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit "${{ steps.existing_pr.outputs.number }}" \
+            --title "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}" \
+            --body "$(cat <<'EOF'
+          ## Summary
+
+          Automated version bump from upstream release.
+
+          - **Current**: v${{ steps.current.outputs.version }}
+          - **New**: ${{ steps.upstream.outputs.tag }}
+          - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
+
+          > Updated automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.
+          EOF
+          )"
+          echo "Updated PR #${{ steps.existing_pr.outputs.number }}"
