@@ -73,6 +73,7 @@ spec:
         - protocol: UDP
           port: 3478
     {{- end }}
+    {{- if .Values.networkPolicy.allowMcpProxy }}
     # Allow access to MCP proxy in same namespace
     - to:
         - podSelector:
@@ -81,4 +82,5 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- end }}
 {{- end }}

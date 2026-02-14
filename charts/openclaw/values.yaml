@@ -231,6 +231,9 @@ podLabels: {}
 # - Allows outbound traffic to DNS (UDP/53), HTTP (TCP/80), HTTPS (TCP/443), and in-namespace mcp-proxy (TCP/8080)
 networkPolicy:
   enabled: false
+  # -- Allow egress to mcp-proxy pods in the same namespace (TCP/8080).
+  # Only enable for gateways that need MCP tool access.
+  allowMcpProxy: false
 
 # -- Extra volume mounts for the main container
 # Example:

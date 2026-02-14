@@ -508,6 +508,10 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        },
+        "allowMcpProxy": {
+          "type": "boolean",
+          "description": "Allow egress to mcp-proxy pods in the same namespace (TCP/8080)"
         }
       },
       "additionalProperties": false
