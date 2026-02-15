@@ -196,6 +196,9 @@ spec:
           volumeMounts:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
+            - name: openclaw-home
+              mountPath: {{ .Values.homePath }}/.claude
+              subPath: .claude
             - name: tmp
               mountPath: /tmp
             - name: cache
