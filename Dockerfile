@@ -149,7 +149,7 @@ WORKDIR /app
 USER node
 
 # Clone OpenClaw at pinned version and remove .git for smaller image
-ARG OPENCLAW_VERSION=v2026.2.13
+ARG OPENCLAW_VERSION=v2026.2.14
 RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} \
       https://github.com/openclaw/openclaw.git . \
     && rm -rf .git
