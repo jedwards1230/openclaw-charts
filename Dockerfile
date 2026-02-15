@@ -68,10 +68,10 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
 # Stage 2: Build OpenClaw application
 # Bun is only needed here — not shipped to runtime
 # ═══════════════════════════════════════════════════════════════
-FROM node:22-bookworm-slim AS builder
+FROM node:25-bookworm-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git curl ca-certificates \
+      git curl ca-certificates unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Bun (required by OpenClaw build scripts — build-time only)
@@ -114,7 +114,7 @@ RUN git clone https://github.com/lunarpulse/openclaw-mcp-plugin.git extensions/m
 # Stage 3: Runtime image
 # All tools available, no build-time cruft (Bun, build deps)
 # ═══════════════════════════════════════════════════════════════
-FROM node:22-bookworm
+FROM node:25-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
 LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, Tailscale, and Claude Code"
