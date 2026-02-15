@@ -1,7 +1,7 @@
 FROM node:25-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
-LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, and Tailscale"
+LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, Tailscale, and Claude Code"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # ═══════════════════════════════════════════════════════════════
@@ -101,6 +101,10 @@ ARG TAILSCALE_VERSION=1.82.5
 RUN ARCH="$(dpkg --print-architecture)" \
     && curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" \
       | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
+
+# Install Claude Code CLI (AI coding agent)
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+    && mv /root/.local/bin/claude /usr/local/bin/claude
 
 # GitHub App credential helper: generates installation tokens just-in-time
 # for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
