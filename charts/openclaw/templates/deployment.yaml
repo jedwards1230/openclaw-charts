@@ -196,9 +196,10 @@ spec:
           volumeMounts:
             - name: openclaw-home
               mountPath: {{ .Values.homePath }}/.openclaw
-            - name: openclaw-home
+            {{- if .Values.claudeCode.persistence.enabled }}
+            - name: claude-code
               mountPath: {{ .Values.homePath }}/.claude
-              subPath: .claude
+            {{- end }}
             - name: tmp
               mountPath: /tmp
             - name: cache
@@ -341,6 +342,11 @@ spec:
         - name: openclaw-home
           persistentVolumeClaim:
             claimName: {{ include "openclaw.fullname" . }}-config
+        {{- if .Values.claudeCode.persistence.enabled }}
+        - name: claude-code
+          persistentVolumeClaim:
+            claimName: {{ include "openclaw.fullname" . }}-claude
+        {{- end }}
         - name: tmp
           emptyDir: {}
         - name: cache

@@ -1,0 +1,18 @@
+{{- if .Values.claudeCode.persistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "openclaw.fullname" . }}-claude
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.claudeCode.persistence.storageClassName }}
+  storageClassName: {{ .Values.claudeCode.persistence.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.claudeCode.persistence.size }}
+{{- end }}
