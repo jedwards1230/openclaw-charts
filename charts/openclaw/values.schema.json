@@ -512,6 +512,14 @@
         "allowMcpProxy": {
           "type": "boolean",
           "description": "Allow egress to mcp-proxy pods in the same namespace (TCP/8080)"
+        },
+        "allowOllama": {
+          "type": "boolean",
+          "description": "Allow egress to Ollama LLM service (TCP/11434)"
+        },
+        "allowOtel": {
+          "type": "boolean",
+          "description": "Allow egress to OTEL collector in monitoring namespace (TCP/4317, TCP/4318)"
         }
       },
       "additionalProperties": false
