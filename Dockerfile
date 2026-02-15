@@ -103,8 +103,13 @@ RUN ARCH="$(dpkg --print-architecture)" \
       | tar xzf - --strip-components=1 -C /usr/local/bin "tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale"
 
 # Install Claude Code CLI (AI coding agent)
+# The install script places a symlink at ~/.local/bin/claude pointing to the
+# actual binary under ~/.local/share/claude/versions/<ver>. We copy the real
+# binary (not the symlink) so it works for non-root users at runtime.
 RUN curl -fsSL https://claude.ai/install.sh | bash \
-    && mv /root/.local/bin/claude /usr/local/bin/claude
+    && cp -L /root/.local/bin/claude /usr/local/bin/claude \
+    && chmod 755 /usr/local/bin/claude \
+    && rm -rf /root/.local/share/claude /root/.local/bin/claude /root/.claude
 
 # GitHub App credential helper: generates installation tokens just-in-time
 # for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
