@@ -79,7 +79,8 @@ ARG BUN_VERSION=1.3.9
 ENV BUN_INSTALL="/usr/local"
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
-RUN corepack enable
+# Node 25 removed corepack — install it explicitly for pnpm
+RUN npm install -g corepack && corepack enable
 
 WORKDIR /app
 
@@ -95,19 +96,21 @@ RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
 
-ENV NODE_ENV=production
-
 # Install MCP integration plugin (community extension, pinned commit)
 # Upstream stores openclaw.plugin.json in config/ — OpenClaw resolves package.json
 # "main" (src/index.js) and expects the manifest next to the entry point.
 ARG MCP_PLUGIN_COMMIT=fa9c22b9be58d1e1218014c93fb2c2a514cfc44b
-RUN git clone https://github.com/lunarpulse/openclaw-mcp-plugin.git extensions/mcp-integration \
+RUN git init extensions/mcp-integration \
     && cd extensions/mcp-integration \
-    && git checkout ${MCP_PLUGIN_COMMIT} \
+    && git remote add origin https://github.com/lunarpulse/openclaw-mcp-plugin.git \
+    && git fetch --depth 1 origin ${MCP_PLUGIN_COMMIT} \
+    && git checkout FETCH_HEAD \
     && cp config/openclaw.plugin.json . \
     && cp config/openclaw.plugin.json src/ \
     && npm install --production \
     && rm -rf .git
+
+ENV NODE_ENV=production
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -150,8 +153,8 @@ COPY --from=tools /out/ /usr/local/bin/
 COPY --from=tools /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-# Enable corepack for pnpm at runtime
-RUN corepack enable
+# Node 25 removed corepack — install it explicitly for pnpm at runtime
+RUN npm install -g corepack && corepack enable
 
 # GitHub App credential helper: generates installation tokens just-in-time
 # for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
