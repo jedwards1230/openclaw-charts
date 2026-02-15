@@ -228,9 +228,20 @@ podLabels: {}
 # -- Network policy configuration
 # When enabled, applies a NetworkPolicy that:
 # - Allows inbound traffic from Traefik ingress and from any pod in the same namespace
-# - Allows outbound traffic to DNS (UDP/53), HTTP (TCP/80), HTTPS (TCP/443), and in-namespace mcp-proxy (TCP/8080)
+# - Allows outbound DNS (UDP/53), HTTP (TCP/80), HTTPS (TCP/443)
+# - Conditionally allows egress via toggles:
+#   allowMcpProxy  - mcp-proxy pods in same namespace (TCP/8080)
+#   allowOllama    - Ollama LLM service (TCP/11434)
+#   allowOtel      - OTEL collector in monitoring namespace (TCP/4317, TCP/4318)
 networkPolicy:
   enabled: false
+  # -- Allow egress to mcp-proxy pods in the same namespace (TCP/8080).
+  # Only enable for gateways that need MCP tool access.
+  allowMcpProxy: false
+  # -- Allow egress to Ollama LLM service (TCP/11434).
+  allowOllama: false
+  # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
+  allowOtel: false
 
 # -- Extra volume mounts for the main container
 # Example:

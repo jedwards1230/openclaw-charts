@@ -73,6 +73,7 @@ spec:
         - protocol: UDP
           port: 3478
     {{- end }}
+    {{- if .Values.networkPolicy.allowMcpProxy }}
     # Allow access to MCP proxy in same namespace
     - to:
         - podSelector:
@@ -81,4 +82,26 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    {{- end }}
+    {{- if .Values.networkPolicy.allowOllama }}
+    # Ollama LLM service
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 11434
+    {{- end }}
+    {{- if .Values.networkPolicy.allowOtel }}
+    # OTEL collector (traces, metrics, logs)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    {{- end }}
 {{- end }}
