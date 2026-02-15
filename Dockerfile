@@ -1,4 +1,4 @@
-FROM node:22-bookworm
+FROM node:25-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/jedwards1230/openclaw-charts"
 LABEL org.opencontainers.image.description="OpenClaw gateway with GitHub CLI, kubectl, ArgoCD, Helm, Helmfile, Logcli, Promtool, Go, Tailscale, and Claude Code"
