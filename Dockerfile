@@ -111,20 +111,6 @@ RUN curl -fsSL https://claude.ai/install.sh | bash \
     && chmod 755 /usr/local/bin/claude \
     && rm -rf /root/.local/share/claude /root/.local/bin/claude /root/.claude
 
-# GitHub App credential helper: generates installation tokens just-in-time
-# for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
-COPY scripts/git-credential-github-app /usr/local/bin/git-credential-github-app
-RUN chmod +x /usr/local/bin/git-credential-github-app
-
-# gh wrapper: injects GitHub App token as GH_TOKEN before calling real gh.
-# Falls back to existing GITHUB_TOKEN/GH_TOKEN if App env vars aren't set.
-RUN mv /usr/bin/gh /usr/bin/gh-real \
-    && printf '#!/bin/sh\n\
-TOKEN=$(/usr/local/bin/git-credential-github-app --token 2>/dev/null)\n\
-[ -n "$TOKEN" ] && export GH_TOKEN="$TOKEN"\n\
-exec /usr/bin/gh-real "$@"\n' > /usr/bin/gh \
-    && chmod +x /usr/bin/gh
-
 # Make openclaw CLI available in PATH (package.json declares bin but pnpm
 # doesn't link it globally during install; dangling symlink resolves after build)
 RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
@@ -135,10 +121,9 @@ RUN ln -s /app/openclaw.mjs /usr/local/bin/openclaw
 # the container runs as a different UID than the image default (uid 1000).
 RUN mkdir -p /app \
     && chown node:node /app \
-    && mkdir -p /home/node/.cache/github-app-credential \
+    && mkdir -p /home/node/.cache \
     && chown -R node:node /home/node/.cache \
-    && chmod 770 /home/node/.cache \
-    && chmod 700 /home/node/.cache/github-app-credential
+    && chmod 770 /home/node/.cache
 
 # ═══════════════════════════════════════════════════════════════
 # Node user operations: app clone, build, plugins

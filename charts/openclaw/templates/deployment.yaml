@@ -62,9 +62,6 @@ spec:
               mkdir -p {{ .Values.homePath }}/.openclaw
               envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
-              [credential "https://github.com"]
-                helper = !/usr/local/bin/git-credential-github-app
-                useHttpPath = true
               [credential]
                 helper = !gh auth git-credential
               GITCONF
