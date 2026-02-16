@@ -22,6 +22,8 @@ gateway:
 
 config: {}
 
+hookTransforms: {}
+
 extraEnv: []
 
 git:
