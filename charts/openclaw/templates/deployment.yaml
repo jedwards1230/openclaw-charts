@@ -36,6 +36,9 @@ spec:
         {{- if .Values.hookTransforms }}
         checksum/hook-transforms: {{ include (print $.Template.BasePath "/hook-transforms-configmap.yaml") . | sha256sum }}
         {{- end }}
+        {{- if .Values.agentScripts }}
+        checksum/agent-scripts: {{ include (print $.Template.BasePath "/agent-scripts-configmap.yaml") . | sha256sum }}
+        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -216,6 +219,11 @@ spec:
               mountPath: {{ .Values.homePath }}/.openclaw/hooks/transforms
               readOnly: true
             {{- end }}
+            {{- if .Values.agentScripts }}
+            - name: agent-scripts
+              mountPath: {{ .Values.homePath }}/.openclaw/workspaces/main/scripts
+              readOnly: true
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -376,6 +384,11 @@ spec:
         - name: hook-transforms
           configMap:
             name: {{ include "openclaw.fullname" . }}-hook-transforms
+        {{- end }}
+        {{- if .Values.agentScripts }}
+        - name: agent-scripts
+          configMap:
+            name: {{ include "openclaw.fullname" . }}-agent-scripts
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

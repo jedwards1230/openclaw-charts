@@ -43,6 +43,17 @@ config: {}
 #       }
 hookTransforms: {}
 
+# -- Agent utility scripts to mount at /home/node/.openclaw/workspaces/main/scripts
+# Map of filename -> file content. When set, creates a ConfigMap and mounts it read-only.
+# Scripts are mounted read-only but remain executable (ConfigMap default mode 0644, which is readable/executable for directories).
+# Example:
+#   agentScripts:
+#     sync-repo.sh: |
+#       #!/bin/bash
+#       # Fetch and sync a git repository
+#       cd "$1" && git fetch origin && git pull
+agentScripts: {}
+
 # -- Extra environment variables for the main container
 # Use this to inject secrets, API keys, or any additional env vars.
 # Example:

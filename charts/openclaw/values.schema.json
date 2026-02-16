@@ -623,6 +623,13 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "agentScripts": {
+      "type": "object",
+      "description": "Map of filename to file content for agent utility scripts. Mounted read-only at ~/.openclaw/workspaces/main/scripts/. Example: {\"sync-repo.sh\": \"#!/bin/bash\\ncd $1 && git fetch && git pull\"}",
+      "additionalProperties": {
+        "type": "string"
+      }
     }
   }
 }

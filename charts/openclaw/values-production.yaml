@@ -24,6 +24,8 @@ config: {}
 
 hookTransforms: {}
 
+agentScripts: {}
+
 extraEnv: []
 
 git:
