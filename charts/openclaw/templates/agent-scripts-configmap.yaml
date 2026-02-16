@@ -1,0 +1,14 @@
+{{- if .Values.agentScripts }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw.fullname" . }}-agent-scripts
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent-scripts
+data:
+  {{- range $filename, $content := .Values.agentScripts }}
+  {{ $filename }}: |
+{{ $content | indent 4 }}
+  {{- end }}
+{{- end }}
