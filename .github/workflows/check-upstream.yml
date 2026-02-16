@@ -35,12 +35,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest" \
-            --jq '.tag_name')
+          RELEASE_JSON=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest")
+          TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
+          BODY=$(echo "$RELEASE_JSON" | jq -r '.body // ""' | head -100)
           # Strip leading 'v'
           VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Store release notes for PR comment (handle multiline)
+          {
+            echo "release_notes<<RELEASE_EOF"
+            echo "$BODY"
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
           echo "Latest upstream: $TAG ($VERSION)"
 
       - name: Compare versions
@@ -138,3 +145,32 @@ jobs:
           EOF
           )"
           echo "Updated PR #${{ steps.existing_pr.outputs.number }}"
+
+      - name: Get PR number
+        if: steps.compare.outputs.needs_update == 'true'
+        id: pr_number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --state open \
+            --json number --jq '.[0].number // empty')
+          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Add PR comment with release details
+        if: steps.compare.outputs.needs_update == 'true' && steps.pr_number.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ steps.upstream.outputs.release_notes }}
+        run: |
+          COMMENT="### 🔄 Version Update Details\n\n"
+          COMMENT+="| | Version |\n|---|---|\n"
+          COMMENT+="| **Old** | \`v${{ steps.current.outputs.version }}\` |\n"
+          COMMENT+="| **New** | \`${{ steps.upstream.outputs.tag }}\` |\n\n"
+          COMMENT+="**Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}\n"
+
+          if [ -n "$RELEASE_NOTES" ]; then
+            COMMENT+="\n<details>\n<summary>📋 Upstream Release Notes</summary>\n\n"
+            COMMENT+="$RELEASE_NOTES\n\n</details>"
+          fi
+
+          printf "$COMMENT" | gh pr comment "${{ steps.pr_number.outputs.number }}" --body-file -
