@@ -221,7 +221,7 @@ spec:
             {{- end }}
             {{- if .Values.agentScripts }}
             - name: agent-scripts
-              mountPath: {{ .Values.homePath }}/.openclaw/workspaces/main/scripts
+              mountPath: {{ .Values.homePath }}/.openclaw/scripts
               readOnly: true
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
