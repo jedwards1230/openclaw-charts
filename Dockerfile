@@ -80,7 +80,7 @@ ENV BUN_INSTALL="/usr/local"
 RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}"
 
 # Node 25 removed corepack — install it explicitly for pnpm
-RUN npm install -g corepack && corepack enable
+RUN npm install -g --force corepack && corepack enable
 
 WORKDIR /app
 
@@ -154,7 +154,7 @@ COPY --from=tools /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Node 25 removed corepack — install it explicitly for pnpm at runtime
-RUN npm install -g corepack && corepack enable
+RUN npm install -g --force corepack && corepack enable
 
 # GitHub App credential helper: generates installation tokens just-in-time
 # for both git (credential helper protocol) and gh (GH_TOKEN wrapper)
