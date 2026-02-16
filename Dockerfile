@@ -12,10 +12,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # All static binaries in a single layer for better caching
 ARG ARGOCD_VERSION=v3.3.0
-ARG YQ_VERSION=v4.44.3
-ARG HELM_VERSION=v3.16.3
+ARG YQ_VERSION=v4.52.2
+ARG HELM_VERSION=v4.1.0
 ARG HELMFILE_VERSION=v1.2.2
-ARG LOGCLI_VERSION=v3.3.2
+ARG LOGCLI_VERSION=v3.6.5
 ARG PROMTOOL_VERSION=v3.9.1
 ARG TAILSCALE_VERSION=1.82.5
 
@@ -138,9 +138,9 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
       > /etc/debsig/policies/AC2D62742012EA22/1password.pol \
     && curl -fsSL https://downloads.1password.com/linux/keys/1password.asc \
       > /usr/share/debsig/keyrings/AC2D62742012EA22/debsig.gpg \
-    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key \
+    && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key \
       | gpg --dearmor -o /usr/share/keyrings/kubernetes-apt-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /" \
+    && echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" \
       > /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends gh 1password-cli kubectl gnupg jq \
