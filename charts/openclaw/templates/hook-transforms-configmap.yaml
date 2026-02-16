@@ -1,0 +1,14 @@
+{{- if .Values.hookTransforms }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openclaw.fullname" . }}-hook-transforms
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+    app.kubernetes.io/component: hook-transforms
+data:
+  {{- range $filename, $content := .Values.hookTransforms }}
+  {{ $filename }}: |
+{{ $content | indent 4 }}
+  {{- end }}
+{{- end }}

@@ -2,7 +2,7 @@ name: Check Upstream Release
 
 on:
   schedule:
-    - cron: "0 12 * * *" # Daily at noon UTC
+    - cron: "0 */6 * * *" # Every 6 hours (4x daily)
   workflow_dispatch:
 
 permissions:
@@ -102,6 +102,7 @@ jobs:
         run: |
           gh pr create \
             --title "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}" \
+            --reviewer jedwards1230 \
             --body "$(cat <<'EOF'
           ## Summary
 

@@ -32,6 +32,17 @@ gateway:
 # These are serialized to JSON as-is — no chart update needed for config changes.
 config: {}
 
+# -- Hook transform files to mount at /home/node/.openclaw/hooks/transforms
+# Map of filename -> file content. When set, creates a ConfigMap and mounts it read-only.
+# Example:
+#   hookTransforms:
+#     github.js: |
+#       export default function transform(event) {
+#         // Transform GitHub webhook payload
+#         return event;
+#       }
+hookTransforms: {}
+
 # -- Extra environment variables for the main container
 # Use this to inject secrets, API keys, or any additional env vars.
 # Example:

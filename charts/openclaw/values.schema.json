@@ -3,7 +3,11 @@
   "title": "OpenClaw Helm Chart Values",
   "type": "object",
   "additionalProperties": true,
-  "required": ["image", "replicaCount", "gateway"],
+  "required": [
+    "image",
+    "replicaCount",
+    "gateway"
+  ],
   "properties": {
     "nameOverride": {
       "type": "string",
@@ -16,7 +20,10 @@
     "image": {
       "type": "object",
       "description": "Container image configuration",
-      "required": ["repository", "tag"],
+      "required": [
+        "repository",
+        "tag"
+      ],
       "properties": {
         "repository": {
           "type": "string",
@@ -28,7 +35,11 @@
         },
         "pullPolicy": {
           "type": "string",
-          "enum": ["Always", "IfNotPresent", "Never"]
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
         }
       },
       "additionalProperties": false
@@ -51,7 +62,10 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["Recreate", "RollingUpdate"]
+          "enum": [
+            "Recreate",
+            "RollingUpdate"
+          ]
         }
       },
       "additionalProperties": true
@@ -59,7 +73,9 @@
     "gateway": {
       "type": "object",
       "description": "OpenClaw gateway configuration (templated into openclaw.json)",
-      "required": ["port"],
+      "required": [
+        "port"
+      ],
       "properties": {
         "port": {
           "type": "integer",
@@ -102,7 +118,9 @@
       "description": "Extra environment variables for the main container",
       "items": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -197,7 +215,9 @@
                     "minLength": 1
                   }
                 },
-                "required": ["itemPath"]
+                "required": [
+                  "itemPath"
+                ]
               }
             }
           ],
@@ -250,7 +270,10 @@
                     "minLength": 1
                   }
                 },
-                "required": ["server", "path"]
+                "required": [
+                  "server",
+                  "path"
+                ]
               }
             }
           ],
@@ -283,7 +306,10 @@
       "description": "Additional ingresses for separate access rules",
       "items": {
         "type": "object",
-        "required": ["name", "enabled"],
+        "required": [
+          "name",
+          "enabled"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -315,7 +341,11 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
         },
         "port": {
           "type": "integer",
@@ -323,7 +353,10 @@
           "maximum": 65535
         },
         "targetPort": {
-          "type": ["string", "integer"],
+          "type": [
+            "string",
+            "integer"
+          ],
           "description": "Target port on the container (defaults to gateway.port)"
         }
       },
@@ -424,7 +457,11 @@
             },
             "pullPolicy": {
               "type": "string",
-              "enum": ["Always", "IfNotPresent", "Never"]
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
             }
           }
         },
@@ -469,7 +506,11 @@
             },
             "pullPolicy": {
               "type": "string",
-              "enum": ["Always", "IfNotPresent", "Never"]
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
             }
           }
         },
@@ -492,7 +533,9 @@
                 "minLength": 1
               }
             },
-            "required": ["authKeySecret"]
+            "required": [
+              "authKeySecret"
+            ]
           }
         }
       ],
@@ -572,6 +615,13 @@
       "description": "Topology spread constraints for pod scheduling",
       "items": {
         "type": "object"
+      }
+    },
+    "hookTransforms": {
+      "type": "object",
+      "description": "Map of filename to file content for hook transform modules. Mounted read-only at ~/.openclaw/hooks/transforms/. Example: {\"github.js\": \"export default function(payload, headers) { ... }\"}",
+      "additionalProperties": {
+        "type": "string"
       }
     }
   }
