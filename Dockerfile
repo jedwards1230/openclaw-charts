@@ -57,6 +57,10 @@ RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${TARGETARCH}.tar.gz" \
       | tar -xzC /usr/local \
     && /usr/local/go/bin/go version
 
+# Go language server (used by Claude Code for Go repos)
+RUN GOBIN=/out /usr/local/go/bin/go install golang.org/x/tools/gopls@latest \
+    && chmod 755 /out/gopls
+
 # Claude Code CLI (install script extracts binary)
 RUN curl -fsSL https://claude.ai/install.sh | bash \
     && cp -L /root/.local/bin/claude /out/claude \
