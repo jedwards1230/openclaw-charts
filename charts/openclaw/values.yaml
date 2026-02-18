@@ -193,6 +193,15 @@ securityContext:
   capabilities:
     drop:
       - ALL
+  # Chromium (v112+) uses syscalls (clone3, io_uring, userfaultfd) not permitted
+  # by the RuntimeDefault seccomp profile applied at the pod level. Without Unconfined,
+  # Chromium 145 crashes on startup with SIGTRAP (SECCOMP_RET_TRAP) from the kernel.
+  # Other security controls remain active: non-root user (uid 1000), read-only rootfs,
+  # all Linux capabilities dropped, allowPrivilegeEscalation=false.
+  # This only affects the openclaw container — sidecar containers (tailscale, webhookd)
+  # still inherit RuntimeDefault from podSecurityContext.
+  seccompProfile:
+    type: Unconfined
 
 # -- Pod annotations (e.g., Velero backup hooks)
 podAnnotations: {}
