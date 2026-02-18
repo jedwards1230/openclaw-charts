@@ -154,3 +154,14 @@ affinity:
                   - openclaw
           topologyKey: kubernetes.io/hostname
 topologySpreadConstraints: []
+
+# Playwright Chrome Headless Shell — avoids Chromium seccomp crashes in K8s
+# chrome-headless-shell is purpose-built for container/CI environments and
+# works under RuntimeDefault seccomp without any seccomp relaxation.
+playwright:
+  enabled: true
+  browsersPath: "/home/node/.cache/ms-playwright"
+  cache:
+    enabled: true
+    size: 1Gi
+    storageClassName: ""

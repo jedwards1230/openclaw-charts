@@ -108,6 +108,66 @@ spec:
                 - CHOWN
         {{- end }}
 
+        {{- if .Values.playwright.enabled }}
+        # Playwright Chrome Headless Shell init container
+        # Installs chrome-headless-shell if not already cached, then patches
+        # openclaw.json to set browser.executablePath to the discovered binary.
+        - name: playwright-install
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              BROWSERS_PATH="{{ .Values.playwright.browsersPath }}"
+              HEADLESS_SHELL=$(find "$BROWSERS_PATH" -name "chrome-headless-shell" -type f 2>/dev/null | head -1)
+              if [ -z "$HEADLESS_SHELL" ]; then
+                echo "Chrome Headless Shell not found — installing via Playwright..."
+                PLAYWRIGHT_BROWSERS_PATH="$BROWSERS_PATH" \
+                  node /app/node_modules/playwright-core/cli.js install chromium
+                HEADLESS_SHELL=$(find "$BROWSERS_PATH" -name "chrome-headless-shell" -type f 2>/dev/null | head -1)
+              else
+                echo "Chrome Headless Shell already present: $HEADLESS_SHELL"
+              fi
+              if [ -z "$HEADLESS_SHELL" ]; then
+                echo "ERROR: chrome-headless-shell not found after install" >&2
+                exit 1
+              fi
+              echo "Patching openclaw.json: browser.executablePath=$HEADLESS_SHELL"
+              CONFIG="{{ .Values.homePath }}/.openclaw/openclaw.json"
+              node -e "
+                const fs = require('fs');
+                const cfg = JSON.parse(fs.readFileSync('$CONFIG', 'utf8'));
+                cfg.browser = cfg.browser || {};
+                cfg.browser.executablePath = '$HEADLESS_SHELL';
+                cfg.browser.headless = true;
+                cfg.browser.noSandbox = true;
+                fs.writeFileSync('$CONFIG', JSON.stringify(cfg, null, 2));
+                console.log('Done:', JSON.stringify(cfg.browser));
+              "
+          env:
+            - name: HOME
+              value: {{ .Values.homePath | quote }}
+            - name: PLAYWRIGHT_BROWSERS_PATH
+              value: {{ .Values.playwright.browsersPath | quote }}
+          volumeMounts:
+            - name: openclaw-home
+              mountPath: {{ .Values.homePath }}/.openclaw
+            - name: playwright-cache
+              mountPath: {{ .Values.playwright.browsersPath }}
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+            capabilities:
+              drop:
+                - ALL
+        {{- end }}
+
         {{- with .Values.extraInitContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -134,6 +194,10 @@ spec:
             {{- if .Values.tailscale.enabled }}
             - name: TS_SOCKET
               value: "/var/run/tailscale/tailscaled.sock"
+            {{- end }}
+            {{- if .Values.playwright.enabled }}
+            - name: PLAYWRIGHT_BROWSERS_PATH
+              value: {{ .Values.playwright.browsersPath | quote }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
@@ -209,6 +273,10 @@ spec:
               mountPath: {{ .Values.homePath }}/.cache
             - name: npm-cache
               mountPath: {{ .Values.homePath }}/.npm
+            {{- if .Values.playwright.enabled }}
+            - name: playwright-cache
+              mountPath: {{ .Values.playwright.browsersPath }}
+            {{- end }}
             {{- if .Values.tailscale.enabled }}
             - name: tailscale-socket
               mountPath: /var/run/tailscale
@@ -366,6 +434,15 @@ spec:
           emptyDir: {}
         - name: npm-cache
           emptyDir: {}
+        {{- if .Values.playwright.enabled }}
+        - name: playwright-cache
+          {{- if .Values.playwright.cache.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "openclaw.fullname" . }}-playwright-cache
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- end }}
         {{- if .Values.webhookd.enabled }}
         - name: webhookd-script
           configMap:

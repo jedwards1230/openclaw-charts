@@ -630,6 +630,40 @@
       "additionalProperties": {
         "type": "string"
       }
+    },
+    "playwright": {
+      "type": "object",
+      "description": "Playwright Chrome Headless Shell: install chrome-headless-shell for K8s container environments where system Chromium fails under RuntimeDefault seccomp",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable Playwright Chrome Headless Shell installation"
+        },
+        "browsersPath": {
+          "type": "string",
+          "description": "Path where Playwright downloads browsers (PLAYWRIGHT_BROWSERS_PATH)"
+        },
+        "cache": {
+          "type": "object",
+          "description": "Persist the Playwright browser cache across pod restarts",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable a dedicated PVC for the Playwright browser cache"
+            },
+            "size": {
+              "type": "string",
+              "description": "Storage size for the PVC"
+            },
+            "storageClassName": {
+              "type": "string",
+              "description": "Storage class name (empty = cluster default)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

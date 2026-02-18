@@ -122,6 +122,35 @@ claudeCode:
     # -- Storage class name (empty string uses cluster default, typically "longhorn")
     storageClassName: ""
 
+# -- Playwright Chrome Headless Shell configuration
+# Installs chrome-headless-shell via Playwright for Kubernetes container environments
+# where system Chromium fails due to seccomp restrictions (blocked syscalls like
+# clone3, io_uring). The headless shell is purpose-built for container/CI use.
+#
+# When enabled, an init container runs playwright's bundled CLI to download the
+# headless shell if not already cached, then patches openclaw.json to set
+# browser.executablePath automatically.
+#
+# Example (minimal):
+#   playwright:
+#     enabled: true
+#     cache:
+#       enabled: true   # highly recommended — avoids re-downloading ~280MB on restart
+playwright:
+  # -- Enable Playwright Chrome Headless Shell installation
+  enabled: false
+  # -- Path where Playwright downloads browsers (PLAYWRIGHT_BROWSERS_PATH env var)
+  browsersPath: "/home/node/.cache/ms-playwright"
+  # -- Persist the Playwright browser cache across pod restarts
+  # Strongly recommended: the headless shell is ~280MB and slow to re-download.
+  cache:
+    # -- Enable a dedicated PVC for the Playwright browser cache
+    enabled: false
+    # -- Storage size (headless shell + ffmpeg ≈ 350MB; use 1Gi for headroom)
+    size: 1Gi
+    # -- Storage class name (empty string uses cluster default, typically "longhorn")
+    storageClassName: ""
+
 # -- Ingress configuration
 ingress:
   enabled: false
