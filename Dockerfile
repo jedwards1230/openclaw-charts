@@ -150,6 +150,14 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get install -y --no-install-recommends gh 1password-cli kubectl gnupg jq wakeonlan \
     && rm -rf /var/lib/apt/lists/*
 
+# Chromium for headless browser automation (used by research agent via CDP)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       chromium chromium-sandbox fonts-liberation fonts-noto-color-emoji \
+       libatk-bridge2.0-0 libatk1.0-0 libcups2 libdrm2 libgbm1 \
+       libnss3 libxcomposite1 libxdamage1 libxrandr2 libxss1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Static CLI binaries from tools stage
 COPY --from=tools /out/ /usr/local/bin/
 
