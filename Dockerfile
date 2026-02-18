@@ -147,7 +147,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" \
       > /etc/apt/sources.list.d/kubernetes.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends gh 1password-cli kubectl gnupg jq \
+    && apt-get install -y --no-install-recommends gh 1password-cli kubectl gnupg jq wakeonlan \
     && rm -rf /var/lib/apt/lists/*
 
 # Static CLI binaries from tools stage
