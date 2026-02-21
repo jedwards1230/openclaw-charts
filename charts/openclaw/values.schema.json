@@ -595,6 +595,49 @@
         "type": "object"
       }
     },
+    "pluginRepos": {
+      "type": "array",
+      "description": "Git repositories to clone as plugins at pod startup. Each entry clones into /plugins/<name> and appends the path to config.plugins.load.paths.",
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier used as the clone directory name. Must not contain path separators."
+          },
+          "url": {
+            "type": "string",
+            "description": "Git clone URL. Must use https:// for authenticated repos."
+          },
+          "ref": {
+            "type": "string",
+            "description": "Branch, tag, or commit-ish to clone. Defaults to the repository's default branch if omitted."
+          },
+          "subdir": {
+            "type": "string",
+            "description": "Subdirectory within the repo to use as the plugin root. Must not start with '/' or contain '..'."
+          },
+          "auth": {
+            "type": "object",
+            "description": "Token-based auth for private repos (https:// only).",
+            "required": ["secretName"],
+            "additionalProperties": false,
+            "properties": {
+              "secretName": {
+                "type": "string",
+                "description": "Name of the K8s secret containing the token."
+              },
+              "secretKey": {
+                "type": "string",
+                "description": "Key within the secret. Defaults to GITHUB_TOKEN."
+              }
+            }
+          }
+        }
+      }
+    },
     "nodeSelector": {
       "type": "object",
       "description": "Node selector for pod scheduling"

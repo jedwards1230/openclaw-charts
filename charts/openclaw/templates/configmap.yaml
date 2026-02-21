@@ -18,7 +18,17 @@ data:
   {{- $load := $plugins.load | default dict }}
   {{- $existingPaths := $load.paths | default list }}
   {{- $repoPaths := list }}
+  {{- $seenNames := dict }}
   {{- range .Values.pluginRepos }}
+  {{- /* Validate name: required, no path separators */}}
+  {{- if not .name }}{{ fail "pluginRepos: name is required for each entry" }}{{- end }}
+  {{- if or (contains "/" .name) (contains "\\" .name) }}{{ fail (printf "pluginRepos: name %q must not contain path separators" .name) }}{{- end }}
+  {{- if hasKey $seenNames .name }}{{ fail (printf "pluginRepos: duplicate name %q — each entry must have a unique name" .name) }}{{- end }}
+  {{- $_ := set $seenNames .name true }}
+  {{- /* Validate subdir: no leading slash, no path traversal */}}
+  {{- if .subdir }}
+  {{- if or (hasPrefix "/" .subdir) (contains ".." .subdir) }}{{ fail (printf "pluginRepos: subdir %q for %q must not start with '/' or contain '..'" .subdir .name) }}{{- end }}
+  {{- end }}
   {{- $mountPath := printf "/plugins/%s" .name }}
   {{- if .subdir }}
   {{- $mountPath = printf "/plugins/%s/%s" .name .subdir }}

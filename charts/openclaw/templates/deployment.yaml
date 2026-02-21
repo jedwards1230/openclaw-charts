@@ -178,16 +178,27 @@ spec:
             - -c
             - |
               set -e
+              command -v git >/dev/null 2>&1 || { echo "git not found in image; cannot clone plugins" >&2; exit 1; }
               {{- range .Values.pluginRepos }}
               echo "Cloning plugin repo: {{ .name }}"
               {{- if .auth }}
               _token="${PLUGIN_TOKEN_{{ .name | upper | replace "-" "_" }}}"
-              _url_path="$(echo '{{ .url }}' | sed 's|https://||')"
-              git clone --depth 1{{ if .ref }} --branch "{{ .ref }}"{{ end }} \
-                "https://${_token}@${_url_path}" "/plugins/{{ .name }}"
+              _url='{{ .url }}'
+              case "${_url}" in
+                https://*) ;;
+                *) echo "Error: authenticated plugin repo '{{ .name }}' requires an https:// URL, got '${_url}'" >&2; exit 1 ;;
+              esac
+              _url_path="${_url#https://}"
+              _askpass="/plugins/.askpass-{{ .name }}.sh"
+              printf '#!/bin/sh\necho "%s"\n' "${_token}" > "${_askpass}"
+              chmod 700 "${_askpass}"
+              GIT_ASKPASS="${_askpass}" GIT_TERMINAL_PROMPT=0 \
+                git clone --depth 1{{ if .ref }} --branch "{{ .ref }}"{{ end }} \
+                "https://${_url_path}" "/plugins/{{ .name }}"
+              rm -f "${_askpass}"
               {{- else }}
               git clone --depth 1{{ if .ref }} --branch "{{ .ref }}"{{ end }} \
-                "{{ .url }}" "/plugins/{{ .name }}"
+                '{{ .url }}' "/plugins/{{ .name }}"
               {{- end }}
               echo "Cloned {{ .name }} successfully"
               {{- end }}
