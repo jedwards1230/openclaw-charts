@@ -168,6 +168,52 @@ spec:
                 - ALL
         {{- end }}
 
+        {{- if .Values.pluginRepos }}
+        # Clone private/public git repos as plugins into /plugins/<name>
+        - name: plugin-clone
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              {{- range .Values.pluginRepos }}
+              echo "Cloning plugin repo: {{ .name }}"
+              {{- if .auth }}
+              _token="${PLUGIN_TOKEN_{{ .name | upper | replace "-" "_" }}}"
+              _url_path="$(echo '{{ .url }}' | sed 's|https://||')"
+              git clone --depth 1{{ if .ref }} --branch "{{ .ref }}"{{ end }} \
+                "https://${_token}@${_url_path}" "/plugins/{{ .name }}"
+              {{- else }}
+              git clone --depth 1{{ if .ref }} --branch "{{ .ref }}"{{ end }} \
+                "{{ .url }}" "/plugins/{{ .name }}"
+              {{- end }}
+              echo "Cloned {{ .name }} successfully"
+              {{- end }}
+          env:
+            {{- range .Values.pluginRepos }}
+            {{- if .auth }}
+            - name: PLUGIN_TOKEN_{{ .name | upper | replace "-" "_" }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .auth.secretName }}
+                  key: {{ .auth.secretKey | default "GITHUB_TOKEN" }}
+            {{- end }}
+            {{- end }}
+          volumeMounts:
+            - name: plugin-repos
+              mountPath: /plugins
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+            runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+            capabilities:
+              drop:
+                - ALL
+        {{- end }}
+
         {{- with .Values.extraInitContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -290,6 +336,11 @@ spec:
             {{- if .Values.agentScripts }}
             - name: agent-scripts
               mountPath: {{ .Values.homePath }}/.openclaw/scripts
+              readOnly: true
+            {{- end }}
+            {{- if .Values.pluginRepos }}
+            - name: plugin-repos
+              mountPath: /plugins
               readOnly: true
             {{- end }}
             {{- with .Values.extraVolumeMounts }}
@@ -466,6 +517,10 @@ spec:
         - name: agent-scripts
           configMap:
             name: {{ include "openclaw.fullname" . }}-agent-scripts
+        {{- end }}
+        {{- if .Values.pluginRepos }}
+        - name: plugin-repos
+          emptyDir: {}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

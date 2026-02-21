@@ -11,6 +11,24 @@ data:
   {{- end }}
   {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
   {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
-  {{- $merged := merge (dict "gateway" $gateway) .Values.config }}
+  {{- /* Build config, appending pluginRepos paths to config.plugins.load.paths */}}
+  {{- $config := deepCopy (.Values.config | default dict) }}
+  {{- if .Values.pluginRepos }}
+  {{- $plugins := $config.plugins | default dict }}
+  {{- $load := $plugins.load | default dict }}
+  {{- $existingPaths := $load.paths | default list }}
+  {{- $repoPaths := list }}
+  {{- range .Values.pluginRepos }}
+  {{- $mountPath := printf "/plugins/%s" .name }}
+  {{- if .subdir }}
+  {{- $mountPath = printf "/plugins/%s/%s" .name .subdir }}
+  {{- end }}
+  {{- $repoPaths = append $repoPaths $mountPath }}
+  {{- end }}
+  {{- $_ := set $load "paths" (concat $existingPaths $repoPaths) }}
+  {{- $_ = set $plugins "load" $load }}
+  {{- $_ = set $config "plugins" $plugins }}
+  {{- end }}
+  {{- $merged := merge (dict "gateway" $gateway) $config }}
   openclaw.json: |
 {{ mustToPrettyJson $merged | indent 4 }}
