@@ -336,6 +336,44 @@ extraInitContainers: []
 #       image: fluent/fluent-bit:3.2
 extraContainers: []
 
+# -- Git repositories to clone as plugins at pod startup.
+# Each entry clones a repo into /plugins/<name> and automatically appends the path
+# (or /plugins/<name>/<subdir> if subdir is set) to config.plugins.load.paths.
+# The cloned volume is mounted read-only in the main container.
+# Repos are re-cloned fresh on every pod restart (emptyDir volume).
+#
+# Fields:
+#   name      (required) Unique identifier used as the clone directory name.
+#             Must not contain path separators. Names must be unique within pluginRepos.
+#             Note: auth token env vars are named PLUGIN_TOKEN_<NAME_UPPERCASED>, so names
+#             that differ only by hyphen/underscore (e.g. my-plugin and my_plugin) will
+#             collide — choose distinct names to avoid this.
+#   url       (required) Git clone URL. Must use https:// for authenticated repos.
+#   ref       (optional) Branch, tag, or commit-ish to clone. If omitted, the repository's
+#             default branch is used — set this explicitly to avoid pulling unexpected versions.
+#   subdir    (optional) Subdirectory within the repo to use as the plugin root.
+#             Must not start with '/' or contain '..'.
+#   auth      (optional) Token-based auth for private repos (https:// URLs only).
+#     secretName  Name of the K8s secret containing the token.
+#     secretKey   Key within the secret (default: GITHUB_TOKEN).
+#
+# Example (public repo):
+#   pluginRepos:
+#     - name: my-plugins
+#       url: https://github.com/org/openclaw-plugins.git
+#       ref: main
+#
+# Example (private repo with token from a K8s secret):
+#   pluginRepos:
+#     - name: private-plugins
+#       url: https://github.com/org/private-openclaw-plugins.git
+#       ref: main
+#       subdir: my-plugin     # optional: subdirectory within repo to use as plugin root
+#       auth:
+#         secretName: openclaw-secrets   # K8s secret containing the token
+#         secretKey: GITHUB_TOKEN        # key within the secret (default: GITHUB_TOKEN)
+pluginRepos: []
+
 nodeSelector:
   kubernetes.io/arch: amd64
 tolerations: []

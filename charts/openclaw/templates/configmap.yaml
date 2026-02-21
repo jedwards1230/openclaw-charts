@@ -11,6 +11,34 @@ data:
   {{- end }}
   {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
   {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
-  {{- $merged := merge (dict "gateway" $gateway) .Values.config }}
+  {{- /* Build config, appending pluginRepos paths to config.plugins.load.paths */}}
+  {{- $config := deepCopy (.Values.config | default dict) }}
+  {{- if .Values.pluginRepos }}
+  {{- $plugins := $config.plugins | default dict }}
+  {{- $load := $plugins.load | default dict }}
+  {{- $existingPaths := $load.paths | default list }}
+  {{- $repoPaths := list }}
+  {{- $seenNames := dict }}
+  {{- range .Values.pluginRepos }}
+  {{- /* Validate name: required, no path separators */}}
+  {{- if not .name }}{{ fail "pluginRepos: name is required for each entry" }}{{- end }}
+  {{- if or (contains "/" .name) (contains "\\" .name) }}{{ fail (printf "pluginRepos: name %q must not contain path separators" .name) }}{{- end }}
+  {{- if hasKey $seenNames .name }}{{ fail (printf "pluginRepos: duplicate name %q — each entry must have a unique name" .name) }}{{- end }}
+  {{- $_ := set $seenNames .name true }}
+  {{- /* Validate subdir: no leading slash, no path traversal */}}
+  {{- if .subdir }}
+  {{- if or (hasPrefix "/" .subdir) (contains ".." .subdir) }}{{ fail (printf "pluginRepos: subdir %q for %q must not start with '/' or contain '..'" .subdir .name) }}{{- end }}
+  {{- end }}
+  {{- $mountPath := printf "/plugins/%s" .name }}
+  {{- if .subdir }}
+  {{- $mountPath = printf "/plugins/%s/%s" .name .subdir }}
+  {{- end }}
+  {{- $repoPaths = append $repoPaths $mountPath }}
+  {{- end }}
+  {{- $_ := set $load "paths" (concat $existingPaths $repoPaths) }}
+  {{- $_ = set $plugins "load" $load }}
+  {{- $_ = set $config "plugins" $plugins }}
+  {{- end }}
+  {{- $merged := merge (dict "gateway" $gateway) $config }}
   openclaw.json: |
 {{ mustToPrettyJson $merged | indent 4 }}
