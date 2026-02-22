@@ -29,10 +29,10 @@ agentScripts: {}
 extraEnv: []
 
 git:
-  authorName: "LilClaw"
-  authorEmail: "lilclaw@lilbro.cloud"
-  committerName: "LilClaw"
-  committerEmail: "lilclaw@lilbro.cloud"
+  authorName: "OpenClaw"
+  authorEmail: "openclaw@example.com"
+  committerName: "OpenClaw"
+  committerEmail: "openclaw@example.com"
   configGlobal: "/home/node/.openclaw/.gitconfig"
 
 nodeOptions: "--max-old-space-size=1536"

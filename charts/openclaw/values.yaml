@@ -74,12 +74,12 @@ extraEnv: []
 #         name: my-config
 extraEnvFrom: []
 
-# -- Git identity for commits
+# -- Git identity for commits made by OpenClaw agents
 git:
-  authorName: "LilClaw"
-  authorEmail: "lilclaw@lilbro.cloud"
-  committerName: "LilClaw"
-  committerEmail: "lilclaw@lilbro.cloud"
+  authorName: "OpenClaw"
+  authorEmail: "openclaw@example.com"
+  committerName: "OpenClaw"
+  committerEmail: "openclaw@example.com"
   configGlobal: "/home/node/.openclaw/.gitconfig"
 
 # -- Node.js options
@@ -89,7 +89,9 @@ nodeOptions: "--max-old-space-size=1536"
 homePath: "/home/node"
 
 # -- Envsubst init container image (runs as non-root, must include envsubst binary)
-# Pin to a versioned tag or digest — avoid :latest for supply-chain safety.
+# SECURITY: This container receives all secret environment variables at pod startup.
+# Pin to a versioned tag or digest for supply-chain safety — avoid :latest in production.
+# Example digest pin: dibi/envsubst:1@sha256:<digest>
 envsubst:
   image: dibi/envsubst:1
 
@@ -130,6 +132,12 @@ claudeCode:
 # When enabled, an init container runs playwright's bundled CLI to download the
 # headless shell if not already cached, then patches openclaw.json to set
 # browser.executablePath automatically.
+#
+# SECURITY NOTE: Enabling Playwright sets browser.noSandbox=true in openclaw.json.
+# Chrome's renderer sandbox is disabled because it requires privileged syscalls that
+# are blocked under Kubernetes RuntimeDefault seccomp. This is a known trade-off for
+# containerized headless browsers. Mitigate the risk by enabling networkPolicy to
+# limit what a compromised renderer process can reach.
 #
 # Example (minimal):
 #   playwright:
@@ -289,6 +297,8 @@ tailscale:
 podLabels: {}
 
 # -- Network policy configuration
+# RECOMMENDED: Enable in production. OpenClaw can execute agent code and make
+# arbitrary web requests — the network policy limits egress to known ports/CIDRs.
 # When enabled, applies a NetworkPolicy that:
 # - Allows inbound traffic from Traefik ingress and from any pod in the same namespace
 # - Allows outbound DNS (UDP/53), HTTP (TCP/80), HTTPS (TCP/443)
