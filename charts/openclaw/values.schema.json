@@ -571,6 +571,10 @@
           "type": "boolean",
           "description": "Allow egress to Ollama LLM service (TCP/11434)"
         },
+        "ollamaCIDR": {
+          "type": "string",
+          "description": "CIDR range for Ollama egress. Only used when allowOllama=true. Restrict to your LAN subnet for tighter control (e.g. '192.168.1.0/24')."
+        },
         "allowOtel": {
           "type": "boolean",
           "description": "Allow egress to OTEL collector in monitoring namespace (TCP/4317, TCP/4318)"

@@ -84,10 +84,10 @@ spec:
           port: 8080
     {{- end }}
     {{- if .Values.networkPolicy.allowOllama }}
-    # Ollama LLM service
+    # Ollama LLM service — restrict ollamaCIDR to your LAN subnet for tighter security
     - to:
         - ipBlock:
-            cidr: 0.0.0.0/0
+            cidr: {{ .Values.networkPolicy.ollamaCIDR }}
       ports:
         - protocol: TCP
           port: 11434
