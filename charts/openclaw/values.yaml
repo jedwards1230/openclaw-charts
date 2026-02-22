@@ -26,6 +26,15 @@ gateway:
   controlUi:
     # -- Allow non-HTTPS auth for control UI. Set to true only for local development without TLS.
     allowInsecureAuth: false
+  # -- Trusted proxy IP addresses or CIDR ranges for X-Forwarded-For trust.
+  # Required when auth.mode="trusted-proxy" with bind="loopback".
+  # When running behind an ingress controller (e.g. Traefik), add the controller's
+  # pod CIDR to ensure accurate client IP classification and rate-limit identity.
+  # Example: ["127.0.0.1/32", "10.42.0.0/16"]
+  trustedProxies: []
+  # -- Custom bind host address. Only used when gateway.bind="custom".
+  # Example: "192.168.1.100"
+  customBindHost: ""
 
 # -- Freeform app config (merged with gateway into openclaw.json)
 # Add any top-level openclaw.json keys here (agents, channels, tools, etc.)

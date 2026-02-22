@@ -11,6 +11,12 @@ data:
   {{- end }}
   {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
   {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
+  {{- if .Values.gateway.trustedProxies }}
+  {{- $_ := set $gateway "trustedProxies" .Values.gateway.trustedProxies }}
+  {{- end }}
+  {{- if .Values.gateway.customBindHost }}
+  {{- $_ := set $gateway "customBindHost" .Values.gateway.customBindHost }}
+  {{- end }}
   {{- /* Build config, appending pluginRepos paths to config.plugins.load.paths */}}
   {{- $config := deepCopy (.Values.config | default dict) }}
   {{- if .Values.pluginRepos }}

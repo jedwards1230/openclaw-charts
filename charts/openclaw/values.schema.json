@@ -105,6 +105,17 @@
             }
           },
           "additionalProperties": true
+        },
+        "trustedProxies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Trusted proxy IP addresses or CIDR ranges for X-Forwarded-For trust"
+        },
+        "customBindHost": {
+          "type": "string",
+          "description": "Custom bind host address, used when gateway.bind=custom"
         }
       },
       "additionalProperties": true
@@ -600,7 +611,10 @@
       "description": "Git repositories to clone as plugins at pod startup. Each entry clones into /plugins/<name> and appends the path to config.plugins.load.paths.",
       "items": {
         "type": "object",
-        "required": ["name", "url"],
+        "required": [
+          "name",
+          "url"
+        ],
         "additionalProperties": false,
         "properties": {
           "name": {
@@ -622,7 +636,9 @@
           "auth": {
             "type": "object",
             "description": "Token-based auth for private repos (https:// only).",
-            "required": ["secretName"],
+            "required": [
+              "secretName"
+            ],
             "additionalProperties": false,
             "properties": {
               "secretName": {
