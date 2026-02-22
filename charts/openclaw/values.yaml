@@ -26,6 +26,10 @@ gateway:
   controlUi:
     # -- Allow non-HTTPS auth for control UI. Set to true only for local development without TLS.
     allowInsecureAuth: false
+    # -- Break-glass: disable Control UI device identity checks entirely.
+    # ⚠️ SEVERE SECURITY DOWNGRADE — disables per-device pairing for the web UI.
+    # Use only as a temporary recovery option when locked out. Revert immediately after.
+    dangerouslyDisableDeviceAuth: false
   # -- Trusted proxy IP addresses or CIDR ranges for X-Forwarded-For trust.
   # Required when auth.mode="trusted-proxy" with bind="loopback".
   # When running behind an ingress controller (e.g. Traefik), add the controller's
