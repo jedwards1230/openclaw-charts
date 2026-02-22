@@ -1,5 +1,8 @@
 # Production values — full security, ingress with TLS, NFS persistence
-# Use for production deployments with hardened security and ingress
+# Use for production deployments with hardened security and ingress.
+#
+# IMPORTANT: This is an annotated example. Replace all <placeholder> values
+# with your own configuration before deploying.
 
 image:
   repository: ghcr.io/jedwards1230/openclaw-charts
@@ -28,11 +31,13 @@ agentScripts: {}
 
 extraEnv: []
 
+# Git identity for commits made by OpenClaw agents.
+# Replace with your preferred bot name and email.
 git:
-  authorName: "LilClaw"
-  authorEmail: "lilclaw@lilbro.cloud"
-  committerName: "LilClaw"
-  committerEmail: "lilclaw@lilbro.cloud"
+  authorName: "OpenClaw"
+  authorEmail: "openclaw@example.com"
+  committerName: "OpenClaw"
+  committerEmail: "openclaw@example.com"
   configGlobal: "/home/node/.openclaw/.gitconfig"
 
 nodeOptions: "--max-old-space-size=1536"
@@ -48,27 +53,31 @@ secrets:
     enabled: false
     itemPath: ""
 
-# NFS persistence for workspace/config
+# NFS persistence for workspace/config.
+# Set nfs.enabled: true and provide your NFS server IP and export path.
 persistence:
   size: 10Gi
   accessModes:
     - ReadWriteMany
   nfs:
     enabled: true
-    server: "192.168.8.36"  # nas-1
-    path: "/mnt/tank-nvme/openclaw"
+    server: "<your-nfs-server>"      # e.g. "192.168.1.100"
+    path: "<your-nfs-export-path>"   # e.g. "/exports/openclaw"
 
-# Ingress with TLS and LAN-only middleware
+# Ingress with TLS.
+# Replace host with your own domain. Configure annotations to match your
+# ingress controller and any access-control middleware.
 ingress:
   enabled: true
-  host: "openclaw.lilbro.cloud"
+  host: "<your-domain>"              # e.g. "openclaw.example.com"
   annotations:
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: kube-system-redirect-lan@kubernetescrd
+    # Add your ingress controller's access-restriction middleware here, e.g.:
+    # traefik.ingress.kubernetes.io/router.middlewares: kube-system-redirect-lan@kubernetescrd
   tls:
     - hosts:
-        - "openclaw.lilbro.cloud"
+        - "<your-domain>"            # e.g. "openclaw.example.com"
       secretName: openclaw-tls
 
 additionalIngresses: []
@@ -108,14 +117,18 @@ securityContext:
     drop:
       - ALL
 
-# Velero backup hook
-podAnnotations:
-  backup.velero.io/backup-volumes: "openclaw-data"
-  pre.hook.backup.velero.io/container: "openclaw"
-  pre.hook.backup.velero.io/command: '["/bin/sh", "-c", "sync"]'
-  pre.hook.backup.velero.io/timeout: "30s"
+# Optional: Velero backup hook annotations.
+# Uncomment if you use Velero for cluster backups.
+# podAnnotations:
+#   backup.velero.io/backup-volumes: "openclaw-data"
+#   pre.hook.backup.velero.io/container: "openclaw"
+#   pre.hook.backup.velero.io/command: '["/bin/sh", "-c", "sync"]'
+#   pre.hook.backup.velero.io/timeout: "30s"
+podAnnotations: {}
 
-priorityClassName: "system-cluster-critical"
+# Optional: Set a priority class for scheduling priority.
+# Avoid system-cluster-critical for non-system workloads.
+priorityClassName: ""
 
 probes:
   startup: {}
@@ -130,7 +143,7 @@ tailscale:
 
 podLabels: {}
 
-# Network policy enabled for production
+# Recommended: enable network policy in production to restrict egress
 networkPolicy:
   enabled: true
 

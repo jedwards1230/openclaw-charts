@@ -120,6 +120,10 @@ Tail Tailscale logs:
 {{- if .Values.secrets.onepassword.enabled }}
 Secrets: Managed by 1Password Operator
   Item: {{ .Values.secrets.onepassword.itemPath }}
+  NOTE: Requires the 1Password Kubernetes Operator to be installed in your cluster.
+        See https://developer.1password.com/docs/k8s/k8s-operator/ for setup instructions.
+        Without the operator, the OnePasswordItem resource will not create the Secret and
+        the pod will fail to start.
 {{- else if .Values.secrets.existingSecret }}
 Secrets: Using existing secret: {{ .Values.secrets.existingSecret }}
 {{- else }}
@@ -145,6 +149,12 @@ Tailscale identity-header auth: Enabled
 2. Access the OpenClaw UI (see access instructions above)
 3. Configure agents, channels, and tools in openclaw.json via values.yaml
 4. Monitor logs for any startup issues
+{{- if not .Values.networkPolicy.enabled }}
+
+⚠️  SECURITY NOTICE: networkPolicy.enabled is false. OpenClaw can make
+   arbitrary network requests — consider enabling the network policy in
+   production: networkPolicy.enabled=true
+{{- end }}
 
 For more information, visit: https://github.com/jedwards1230/openclaw-charts
 
