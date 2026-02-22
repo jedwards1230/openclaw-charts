@@ -84,10 +84,10 @@ spec:
           port: 8080
     {{- end }}
     {{- if .Values.networkPolicy.allowOllama }}
-    # Ollama LLM service
+    # Ollama LLM service (LAN only — Ollama runs on LAN hosts, not the internet)
     - to:
         - ipBlock:
-            cidr: 0.0.0.0/0
+            cidr: 192.168.8.0/24
       ports:
         - protocol: TCP
           port: 11434
