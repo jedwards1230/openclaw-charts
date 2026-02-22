@@ -322,6 +322,11 @@ networkPolicy:
   allowMcpProxy: false
   # -- Allow egress to Ollama LLM service (TCP/11434).
   allowOllama: false
+  # -- CIDR range allowed for Ollama egress. Only used when allowOllama=true.
+  # Defaults to 0.0.0.0/0 (any host on port 11434) for broad compatibility — Ollama can run
+  # on a LAN box, remote host, or in-cluster and the chart cannot know your topology.
+  # Restrict this to your LAN subnet (e.g. "192.168.1.0/24") for tighter egress control.
+  ollamaCIDR: "0.0.0.0/0"
   # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
   allowOtel: false
 
