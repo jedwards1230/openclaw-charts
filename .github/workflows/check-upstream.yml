@@ -38,7 +38,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          RELEASE_JSON=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest")
+          # Try authenticated first, fall back to unauthenticated curl
+          RELEASE_JSON=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest" 2>/dev/null \
+            || curl -sf "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases/latest" \
+            || true)
+          if [ -z "$RELEASE_JSON" ] || echo "$RELEASE_JSON" | jq -e 'has("message")' >/dev/null 2>&1; then
+            echo "Failed to fetch upstream release — skipping"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
           # Strip leading 'v'
           VERSION="${TAG#v}"
@@ -49,11 +58,15 @@ jobs:
       - name: Compare versions
         id: compare
         run: |
-          if [ "${{ steps.current.outputs.version }}" = "${{ steps.upstream.outputs.version }}" ]; then
+          UPSTREAM_VERSION="${{ steps.upstream.outputs.version }}"
+          if [ -z "$UPSTREAM_VERSION" ]; then
+            echo "Upstream version unavailable — skipping"
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.current.outputs.version }}" = "$UPSTREAM_VERSION" ]; then
             echo "Up to date — nothing to do"
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
           else
-            echo "New version available: ${{ steps.current.outputs.version }} → ${{ steps.upstream.outputs.version }}"
+            echo "New version available: ${{ steps.current.outputs.version }} → $UPSTREAM_VERSION"
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
           fi
 
