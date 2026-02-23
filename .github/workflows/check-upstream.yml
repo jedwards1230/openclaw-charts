@@ -1,9 +1,14 @@
 name: Check Upstream Release
+run-name: "Check upstream release${{ github.event_name == 'workflow_dispatch' && ' (manual)' || '' }}"
 
 on:
   schedule:
     - cron: "0 */6 * * *" # Every 6 hours (4x daily)
   workflow_dispatch:
+
+concurrency:
+  group: check-upstream
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -11,16 +16,13 @@ permissions:
 
 env:
   UPSTREAM_REPO: openclaw/openclaw
-  BRANCH_NAME: auto/bump-openclaw
 
 jobs:
   check:
     name: Check for New Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
       - name: Get current version
         id: current
@@ -35,19 +37,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           RELEASE_JSON=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest")
           TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
-          BODY=$(echo "$RELEASE_JSON" | jq -r '.body // ""' | head -100)
           # Strip leading 'v'
           VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          # Store release notes for PR comment (handle multiline)
-          {
-            echo "release_notes<<RELEASE_EOF"
-            echo "$BODY"
-            echo "RELEASE_EOF"
-          } >> "$GITHUB_OUTPUT"
           echo "Latest upstream: $TAG ($VERSION)"
 
       - name: Compare versions
@@ -61,115 +57,109 @@ jobs:
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check for existing PR
-        if: steps.compare.outputs.needs_update == 'true'
-        id: existing_pr
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --state open \
-            --json number --jq '.[0].number // empty')
-          if [ -n "$PR_NUMBER" ]; then
-            echo "Found existing PR: #$PR_NUMBER"
-            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No existing PR found"
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create or reset branch
+      - name: Bump and push branch
         if: steps.compare.outputs.needs_update == 'true'
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "${{ env.BRANCH_NAME }}" origin/main
-
-      - name: Run bump script
-        if: steps.compare.outputs.needs_update == 'true'
-        run: |
+          git checkout -B "auto/bump-openclaw-${{ steps.upstream.outputs.tag }}" origin/main
           ./scripts/bump-version.sh "${{ steps.upstream.outputs.version }}" --bump-chart
-
-      - name: Commit and push
-        if: steps.compare.outputs.needs_update == 'true'
-        run: |
           git add -A
-          git commit -m "$(cat <<EOF
-          chore: bump openclaw to ${{ steps.upstream.outputs.tag }}
+          git commit -m "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}
 
           Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
-          EOF
-          )"
-          git push --force-with-lease origin "${{ env.BRANCH_NAME }}"
 
-      - name: Create PR
-        if: steps.compare.outputs.needs_update == 'true' && steps.existing_pr.outputs.exists == 'false'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr create \
-            --title "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}" \
-            --body "$(cat <<'EOF'
-          ## Summary
+          Co-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          git push --force-with-lease origin "auto/bump-openclaw-${{ steps.upstream.outputs.tag }}"
 
-          Automated version bump from upstream release.
-
-          - **Current**: v${{ steps.current.outputs.version }}
-          - **New**: ${{ steps.upstream.outputs.tag }}
-          - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
-
-          > Created automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.
-          EOF
-          )" \
-            --head "${{ env.BRANCH_NAME }}" \
-            --base main
-
-      - name: Update existing PR
-        if: steps.compare.outputs.needs_update == 'true' && steps.existing_pr.outputs.exists == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr edit "${{ steps.existing_pr.outputs.number }}" \
-            --title "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}" \
-            --body "$(cat <<'EOF'
-          ## Summary
-
-          Automated version bump from upstream release.
-
-          - **Current**: v${{ steps.current.outputs.version }}
-          - **New**: ${{ steps.upstream.outputs.tag }}
-          - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
-
-          > Updated automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow.
-          EOF
-          )"
-          echo "Updated PR #${{ steps.existing_pr.outputs.number }}"
-
-      - name: Get PR number
+      - name: Create or update PR
         if: steps.compare.outputs.needs_update == 'true'
-        id: pr_number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT: ${{ steps.current.outputs.version }}
+          TAG: ${{ steps.upstream.outputs.tag }}
         run: |
-          NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --state open \
-            --json number --jq '.[0].number // empty')
-          echo "number=$NUMBER" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
 
-      - name: Add PR comment with release details
-        if: steps.compare.outputs.needs_update == 'true' && steps.pr_number.outputs.number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_NOTES: ${{ steps.upstream.outputs.release_notes }}
-        run: |
-          COMMENT="### 🔄 Version Update Details\n\n"
-          COMMENT+="| | Version |\n|---|---|\n"
-          COMMENT+="| **Old** | \`v${{ steps.current.outputs.version }}\` |\n"
-          COMMENT+="| **New** | \`${{ steps.upstream.outputs.tag }}\` |\n\n"
-          COMMENT+="**Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}\n"
+          BRANCH="auto/bump-openclaw-${TAG}"
 
-          if [ -n "$RELEASE_NOTES" ]; then
-            COMMENT+="\n<details>\n<summary>📋 Upstream Release Notes</summary>\n\n"
-            COMMENT+="$RELEASE_NOTES\n\n</details>"
+          # ── Clean up merged auto-bump branches ───────────────────
+          git fetch origin --prune
+          for remote_branch in $(git branch -r | grep 'origin/auto/bump-openclaw-' | sed 's|origin/||'); do
+            if gh pr view "$remote_branch" --json state --jq '.state' 2>/dev/null | grep -q "MERGED"; then
+              git push origin --delete "$remote_branch" 2>/dev/null || true
+            fi
+          done
+
+          PR_BODY="## Summary
+
+          Automated version bump from upstream release.
+
+          - **Current**: \`v${CURRENT}\`
+          - **New**: \`${TAG}\`
+          - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG}
+
+          > Created automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow."
+
+          # ── Create or update PR ──────────────────────────────────
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Updating existing PR #${EXISTING_PR}"
+            gh pr edit "$EXISTING_PR" \
+              --title "chore: bump openclaw to ${TAG}" \
+              --body "$PR_BODY"
+          else
+            gh pr create \
+              --title "chore: bump openclaw to ${TAG}" \
+              --body "$PR_BODY" \
+              --head "$BRANCH" \
+              --base main
+            EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
           fi
 
-          printf "$COMMENT" | gh pr comment "${{ steps.pr_number.outputs.number }}" --body-file -
+          # ── Close superseded PRs for older versions ──────────────
+          OLD_PRS=$(gh pr list --state open --json number,headRefName \
+            --jq "[.[] | select(.headRefName | startswith(\"auto/bump-openclaw-\")) | select(.headRefName != \"${BRANCH}\") | .number] | .[]")
+          if [ -n "$OLD_PRS" ]; then
+            for pr in $OLD_PRS; do
+              echo "Closing superseded PR #${pr}"
+              gh pr close "$pr" --comment "Superseded by newer version: ${TAG}" --delete-branch || true
+            done
+          fi
+
+          # ── Add release notes comment (deduped) ──────────────────
+          RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
+            --jq '.body // empty' 2>/dev/null || true)
+
+          if [ -n "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="${RELEASE_NOTES:0:10000}"
+            COMMENT="### Release Notes for ${TAG}
+
+          ${RELEASE_NOTES}"
+            # Only post once — prevent duplicate comments on every cron run
+            ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${EXISTING_PR}/comments" \
+              | jq --arg v "### Release Notes for ${TAG}" '[.[] | select(.body | contains($v))] | length' \
+              | awk '{s+=$1} END{print s}')
+            if [ "$ALREADY_COMMENTED" = "0" ]; then
+              gh pr comment "$EXISTING_PR" --body "$COMMENT"
+            fi
+          fi
+
+          echo "Done: PR for openclaw ${TAG}"
+
+      - name: Summary
+        if: always()
+        env:
+          NEEDS_UPDATE: ${{ steps.compare.outputs.needs_update }}
+          CURRENT: ${{ steps.current.outputs.version }}
+          TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          if [ "$NEEDS_UPDATE" = "true" ]; then
+            echo "### :arrow_up: openclaw: v${CURRENT} → ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$NEEDS_UPDATE" = "false" ]; then
+            echo "### :white_check_mark: openclaw: up to date (v${CURRENT})" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### :warning: openclaw: update check did not complete" >> "$GITHUB_STEP_SUMMARY"
+          fi
