@@ -113,7 +113,7 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key || secrets.ANTHROPIC_API_KEY }}
           model: claude-sonnet-4-6
-          track_progress: true
+          direct_prompt: true
           claude_args: |
             --max-turns 10
             --allowedTools "Bash(gh pr comment:*),Bash(cat:*),Read,Glob,Grep"
