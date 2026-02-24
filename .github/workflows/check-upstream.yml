@@ -221,15 +221,22 @@ jobs:
             --jq '.body // empty' 2>/dev/null || true)
 
           if [ -n "$RELEASE_NOTES" ]; then
-            # Escape @mentions to avoid pinging unaffiliated GitHub users
-            RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed 's/@\([a-zA-Z0-9_-]\+\)/`@\1`/g')
             RELEASE_NOTES="${RELEASE_NOTES:0:10000}"
-            COMMENT="### Release Notes for ${TAG}
+            COMMENT="### Release Notes: ${TAG}
 
-          ${RELEASE_NOTES}"
+          [View on GitHub](https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG})
+
+          <details>
+          <summary>Raw upstream release notes</summary>
+
+          \`\`\`\`
+          ${RELEASE_NOTES}
+          \`\`\`\`
+
+          </details>"
             # Only post once — prevent duplicate comments on retry
             ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-              | jq --arg v "### Release Notes for ${TAG}" '[.[] | select(.body | contains($v))] | length' \
+              | jq --arg v "### Release Notes: ${TAG}" '[.[] | select(.body | contains($v))] | length' \
               | awk '{s+=$1} END{print s}')
             if [ "${ALREADY_COMMENTED:-0}" -eq 0 ]; then
               gh pr comment "$PR_NUMBER" --body "$COMMENT"
