@@ -9,6 +9,9 @@ data:
   {{- if .Values.gateway.auth.allowTailscale }}
   {{- $_ := set $gatewayAuth "allowTailscale" true }}
   {{- end }}
+  {{- if .Values.gateway.auth.rateLimit }}
+  {{- $_ := set $gatewayAuth "rateLimit" .Values.gateway.auth.rateLimit }}
+  {{- end }}
   {{- $gatewayControlUi := dict "allowInsecureAuth" .Values.gateway.controlUi.allowInsecureAuth }}
   {{- if .Values.gateway.controlUi.dangerouslyDisableDeviceAuth }}
   {{- $_ := set $gatewayControlUi "dangerouslyDisableDeviceAuth" true }}
