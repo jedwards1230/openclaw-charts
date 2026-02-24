@@ -23,6 +23,11 @@ gateway:
     mode: "token"
     # -- Allow Tailscale identity-header authentication (tailscale whois)
     allowTailscale: false
+    # -- Rate limiting for gateway authentication (protects against brute-force attacks on LAN/public binds)
+    rateLimit: {}
+    #  maxAttempts: 20
+    #  windowMs: 60000
+    #  lockoutMs: 300000
   controlUi:
     # -- Allow non-HTTPS auth for control UI. Set to true only for local development without TLS.
     allowInsecureAuth: false
