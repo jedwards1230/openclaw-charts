@@ -95,7 +95,7 @@ jobs:
           LATEST_VERSION="${LATEST_TAG#v}"
 
           # Build JSON array of all missed tags (ascending order)
-          MISSED_JSON=$(echo "$NEWER_TAGS" | jq -R -s 'split("\n") | map(select(length > 0))')
+          MISSED_JSON=$(echo "$NEWER_TAGS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
           echo "tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
