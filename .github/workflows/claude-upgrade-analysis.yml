@@ -145,7 +145,7 @@ jobs:
           anthropic_api_key: ${{ secrets.anthropic_api_key || secrets.ANTHROPIC_API_KEY }}
           claude_args: |
             --model claude-sonnet-4-6
-            --max-turns 10
+            --max-turns 20
             --allowedTools "Bash(cat *),Bash(head *),Bash(gh pr comment *),Read,Write,Glob,Grep"
           prompt: |
             You are analyzing an upstream version bump for a **fork** of the openclaw project.
