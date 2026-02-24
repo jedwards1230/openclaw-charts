@@ -158,6 +158,7 @@ jobs:
               gh pr comment ${{ inputs.pr_number }} --body "..."
 
             Do NOT post inline comments or suggestions. Do NOT output review text as conversation messages.
+            Do NOT mention any GitHub usernames (e.g. @someone) in your comment — they are upstream contributors unaffiliated with this fork and will get unwanted notifications.
 
             The comment MUST start with this exact header (using actual version numbers):
               ## Upgrade Analysis: v${{ inputs.origin_version }} → ${{ inputs.new_tag }}
