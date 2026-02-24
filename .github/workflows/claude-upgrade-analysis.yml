@@ -51,7 +51,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
     env:
       UPSTREAM_REPO: openclaw/openclaw
     steps:
