@@ -35,6 +35,7 @@ jobs:
       pr_number: ${{ steps.pr.outputs.number }}
       origin_version: ${{ steps.pr.outputs.origin_version }}
       tag: ${{ steps.upstream.outputs.tag }}
+      missed_tags: ${{ steps.upstream.outputs.missed_tags }}
       already_bumped: ${{ steps.check_branch.outputs.already_bumped }}
     steps:
       - uses: actions/checkout@v6
@@ -49,28 +50,59 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Current appVersion: $VERSION"
 
-      - name: Get latest upstream release
+      - name: Get upstream releases newer than current
         id: upstream
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_VERSION: ${{ steps.current.outputs.version }}
         run: |
           set -euo pipefail
-          # Try authenticated first, fall back to unauthenticated curl
-          RELEASE_JSON=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/latest" 2>/dev/null \
-            || curl -sf "https://api.github.com/repos/${{ env.UPSTREAM_REPO }}/releases/latest" \
-            || true)
-          if [ -z "$RELEASE_JSON" ] || echo "$RELEASE_JSON" | jq -e 'has("message")' >/dev/null 2>&1; then
-            echo "Failed to fetch upstream release — skipping"
+
+          # Fetch all non-prerelease, non-draft releases (paginated, up to 100)
+          ALL_RELEASES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases" \
+            --paginate --jq '[.[] | select(.prerelease == false and .draft == false)] | .[].tag_name' \
+            2>/dev/null || true)
+
+          if [ -z "$ALL_RELEASES" ]; then
+            echo "Failed to fetch upstream releases — skipping"
             echo "tag=" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
+            echo "missed_tags=[]" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          TAG=$(echo "$RELEASE_JSON" | jq -r '.tag_name')
-          # Strip leading 'v'
-          VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Latest upstream: $TAG ($VERSION)"
+
+          # Find all versions newer than current using sort -V
+          # Prepend current version, sort, then take everything after it
+          NEWER_TAGS=$(echo "$ALL_RELEASES" | while read -r tag; do
+            ver="${tag#v}"
+            # Only include tags that sort higher than current
+            if [ "$(printf '%s\n%s' "$CURRENT_VERSION" "$ver" | sort -V | tail -1)" = "$ver" ] \
+               && [ "$ver" != "$CURRENT_VERSION" ]; then
+              echo "$tag"
+            fi
+          done | sort -t. -k1,1n -k2,2n -k3,3n)
+
+          if [ -z "$NEWER_TAGS" ]; then
+            echo "No newer versions found"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "missed_tags=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Latest = last in ascending-sorted list
+          LATEST_TAG=$(echo "$NEWER_TAGS" | tail -1)
+          LATEST_VERSION="${LATEST_TAG#v}"
+
+          # Build JSON array of all missed tags (ascending order)
+          MISSED_JSON=$(echo "$NEWER_TAGS" | jq -R . | jq -sc .)
+
+          echo "tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
+          echo "missed_tags=$MISSED_JSON" >> "$GITHUB_OUTPUT"
+
+          COUNT=$(echo "$NEWER_TAGS" | wc -l | tr -d ' ')
+          echo "Found ${COUNT} newer version(s): $(echo "$NEWER_TAGS" | tr '\n' ' ')"
 
       - name: Compare versions
         id: compare
@@ -212,21 +244,33 @@ jobs:
             echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Post release notes comment
+      - name: Post release notes comments
         if: success() && steps.compare.outputs.needs_update == 'true' && steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.upstream.outputs.tag }}
+          MISSED_TAGS: ${{ steps.upstream.outputs.missed_tags }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
           set -euo pipefail
 
-          RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
-            --jq '.body // empty' 2>/dev/null || true)
+          # Fetch existing comments once (avoid repeated API calls in loop)
+          EXISTING_COMMENTS=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            | jq -r '.[].body' 2>/dev/null || true)
 
-          if [ -n "$RELEASE_NOTES" ]; then
-            RELEASE_NOTES="${RELEASE_NOTES:0:10000}"
-            COMMENT="### Release Notes: ${TAG}
+          # Loop through each missed tag and post release notes
+          echo "$MISSED_TAGS" | jq -r '.[]' | while read -r TAG; do
+            # Dedup: skip if already commented for this tag
+            if echo "$EXISTING_COMMENTS" | grep -qF "### Release Notes: ${TAG}"; then
+              echo "Release notes for ${TAG} already posted — skipping"
+              continue
+            fi
+
+            RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
+              --jq '.body // empty' 2>/dev/null || true)
+
+            if [ -n "$RELEASE_NOTES" ]; then
+              RELEASE_NOTES="${RELEASE_NOTES:0:10000}"
+              COMMENT="### Release Notes: ${TAG}
 
           [View on GitHub](https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG})
 
@@ -238,14 +282,12 @@ jobs:
           \`\`\`\`
 
           </details>"
-            # Only post once — prevent duplicate comments on retry
-            ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-              | jq --arg v "### Release Notes: ${TAG}" '[.[] | select(.body | contains($v))] | length' \
-              | awk '{s+=$1} END{print s}')
-            if [ "${ALREADY_COMMENTED:-0}" -eq 0 ]; then
               gh pr comment "$PR_NUMBER" --body "$COMMENT"
+              echo "Posted release notes for ${TAG}"
+            else
+              echo "No release notes found for ${TAG} — skipping"
             fi
-          fi
+          done
 
       - name: Summary
         if: always()
@@ -253,12 +295,14 @@ jobs:
           NEEDS_UPDATE: ${{ steps.compare.outputs.needs_update }}
           CURRENT: ${{ steps.current.outputs.version }}
           TAG: ${{ steps.upstream.outputs.tag }}
+          MISSED_TAGS: ${{ steps.upstream.outputs.missed_tags }}
           ALREADY_BUMPED: ${{ steps.check_branch.outputs.already_bumped }}
         run: |
+          MISSED_COUNT=$(echo "${MISSED_TAGS:-[]}" | jq 'length' 2>/dev/null || echo 0)
           if [ "$NEEDS_UPDATE" = "true" ] && [ "$ALREADY_BUMPED" = "true" ]; then
             echo "### :white_check_mark: openclaw: branch already up to date with ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$NEEDS_UPDATE" = "true" ]; then
-            echo "### :arrow_up: openclaw: v${CURRENT} → ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+            echo "### :arrow_up: openclaw: v${CURRENT} → ${TAG} (${MISSED_COUNT} version(s))" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$NEEDS_UPDATE" = "false" ]; then
             echo "### :white_check_mark: openclaw: up to date (v${CURRENT})" >> "$GITHUB_STEP_SUMMARY"
           else
@@ -274,5 +318,6 @@ jobs:
       pr_number: ${{ needs.check.outputs.pr_number }}
       origin_version: ${{ needs.check.outputs.origin_version }}
       new_tag: ${{ needs.check.outputs.tag }}
+      missed_tags: ${{ needs.check.outputs.missed_tags }}
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
