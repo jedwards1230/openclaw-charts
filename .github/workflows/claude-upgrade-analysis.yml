@@ -1,0 +1,213 @@
+# Analyzes upstream openclaw version bumps for fork-specific upgrade impact.
+# Called by check-upstream.yml after a version-bump PR is created or updated.
+# Posts a single comprehensive comment (no inline suggestions) per version.
+# Can also be triggered manually to re-analyze an existing PR.
+
+name: Claude Upgrade Analysis
+run-name: "Upgrade analysis: ${{ inputs.new_tag }}${{ github.event_name == 'workflow_dispatch' && ' (manual)' || '' }}"
+
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: PR number to analyze and comment on
+        required: true
+        type: string
+      origin_version:
+        description: Version on main when the PR was first created
+        required: true
+        type: string
+      new_tag:
+        description: New upstream version tag (e.g. v2026.2.22)
+        required: true
+        type: string
+    secrets:
+      anthropic_api_key:
+        required: true
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to analyze
+        required: true
+        type: string
+      origin_version:
+        description: Origin version (on main when PR was created)
+        required: true
+        type: string
+      new_tag:
+        description: Upstream version tag (e.g. v2026.2.22)
+        required: true
+        type: string
+
+concurrency:
+  group: claude-upgrade-${{ inputs.pr_number }}-${{ inputs.new_tag }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze Upgrade Impact
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    env:
+      UPSTREAM_REPO: openclaw/openclaw
+    steps:
+      - name: Check for existing analysis
+        id: dedup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.new_tag }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          MARKER="## Upgrade Analysis: v${{ inputs.origin_version }} → ${TAG}"
+          ALREADY_POSTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            | jq --arg v "$MARKER" '[.[] | select(.body | contains($v))] | length' \
+            | awk '{s+=$1} END{print s}')
+          if [ "$ALREADY_POSTED" != "0" ]; then
+            echo "Analysis for ${TAG} already posted — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout PR branch
+        if: steps.dedup.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ inputs.pr_number }}/head
+          fetch-depth: 0
+
+      - name: Gather context
+        if: steps.dedup.outputs.skip != 'true'
+        id: context
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.new_tag }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          set -euo pipefail
+
+          # Get the diff
+          DIFF=$(gh pr diff "$PR_NUMBER" 2>/dev/null || git diff origin/main...HEAD)
+          echo "$DIFF" > /tmp/pr-diff.txt
+
+          # Get upstream release notes
+          RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
+            --jq '.body // empty' 2>/dev/null || true)
+          echo "${RELEASE_NOTES:-No release notes available.}" > /tmp/release-notes.txt
+
+          # Get prior analysis comments from this PR (for cumulative context)
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
+            | jq -r '[.[] | select(.body | contains("## Upgrade Analysis:"))] | .[-3:] | .[].body' \
+            > /tmp/prior-analyses.txt 2>/dev/null || true
+
+          echo "diff_size=$(wc -l < /tmp/pr-diff.txt)" >> "$GITHUB_OUTPUT"
+          echo "has_prior=$([ -s /tmp/prior-analyses.txt ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Analysis
+        if: steps.dedup.outputs.skip != 'true'
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key || secrets.ANTHROPIC_API_KEY }}
+          model: claude-sonnet-4-6
+          track_progress: true
+          claude_args: |
+            --max-turns 10
+            --allowedTools "Bash(gh pr comment:*),Bash(cat:*),Read,Glob,Grep"
+          prompt: |
+            You are analyzing an upstream version bump for a **fork** of the openclaw project.
+            Your job is to determine what changes (if any) this fork needs to accommodate the upgrade.
+
+            ## Context
+
+            - **Fork repo**: ${{ github.repository }}
+            - **Upstream repo**: ${{ env.UPSTREAM_REPO }}
+            - **Origin version** (currently on main): v${{ inputs.origin_version }}
+            - **New version**: ${{ inputs.new_tag }}
+            - **PR**: #${{ inputs.pr_number }}
+
+            ## What this fork customizes
+
+            This fork wraps upstream openclaw in a custom Docker image and Helm chart:
+            - `Dockerfile`: Multi-stage build adding CLI tools (argocd, helm, helmfile, kubectl, tailscale, go, claude, etc.), Chromium for headless browsing, and an MCP plugin
+            - `charts/openclaw/`: Helm chart with templates for Deployment, Service, Ingress, NetworkPolicy, RBAC, and optional sidecars (Tailscale, Webhookd)
+            - `values.yaml` variants: default, development, production configurations
+
+            ## Your task
+
+            1. Read the PR diff at `/tmp/pr-diff.txt` to see what changed in this version bump
+            2. Read the upstream release notes at `/tmp/release-notes.txt`
+            3. If prior analyses exist, read `/tmp/prior-analyses.txt` for cumulative context
+            4. Examine the fork's customizations: `Dockerfile`, `charts/openclaw/templates/`, `charts/openclaw/values.yaml`
+            5. Determine upgrade impact:
+               - Are there new dependencies upstream that the Dockerfile needs?
+               - Are there new config options that `values.yaml` should expose?
+               - Are there breaking changes that affect chart templates?
+               - Are there new ports, environment variables, or volumes?
+               - Does the MCP plugin at the pinned commit still work with this version?
+
+            ## Output
+
+            Post a **single comment** on PR #${{ inputs.pr_number }} using `gh pr comment`.
+            Do NOT post inline comments or suggestions. Do NOT output review text as conversation messages.
+
+            The comment MUST follow this exact format:
+
+            ```
+            ## Upgrade Analysis: v<origin> → <new_tag>
+
+            ### Verdict: [Clean Upgrade | Action Required | Breaking Changes]
+
+            <1-2 sentence summary>
+
+            ### Upstream Changes (relevant to this fork)
+
+            <bullet list of changes that could affect this fork, with links to upstream if available>
+            <skip items that are purely upstream internal and don't affect the fork>
+
+            ### Fork Impact
+
+            <for each affected file, describe what needs to change and why>
+            <if no changes needed, say "No fork changes required — clean upgrade">
+
+            ### Recommendations
+
+            <numbered list of specific actions, or "None — merge when ready">
+            ```
+
+            Be concise. Focus on actionable information. If it's a clean upgrade, say so clearly.
+
+      - name: Summary
+        if: always()
+        env:
+          TAG: ${{ inputs.new_tag }}
+          SKIPPED: ${{ steps.dedup.outputs.skip }}
+        run: |
+          echo "## Claude Upgrade Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version**: ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**PR**: #${{ inputs.pr_number }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SKIPPED" = "true" ]; then
+            echo "**Status**: Skipped (already analyzed)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "**Session**: \`${{ steps.claude.outputs.session_id }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+            EXEC_FILE="${RUNNER_TEMP}/claude-execution-output.json"
+            if [ -f "$EXEC_FILE" ]; then
+              RESULT=$(jq -r 'last | .subtype // "unknown"' "$EXEC_FILE" 2>/dev/null || echo "unknown")
+              COST=$(jq -r 'last | .total_cost_usd // "?"' "$EXEC_FILE" 2>/dev/null || echo "?")
+              DURATION=$(jq -r 'last | .duration_ms // 0' "$EXEC_FILE" 2>/dev/null || echo "0")
+              DURATION_S=$(echo "scale=1; ${DURATION} / 1000" | bc 2>/dev/null || echo "?")
+
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+              echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Result | \`$RESULT\` |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Duration | ${DURATION_S}s |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| Cost | \$${COST} |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi

@@ -1,3 +1,10 @@
+# Checks for new upstream openclaw releases every 6 hours.
+# Creates or updates a version-bump PR, posts per-version release notes,
+# and triggers Claude upgrade analysis.
+# Supports version stacking: if multiple releases drop before merge,
+# each gets its own release-notes comment and Claude analysis on the same PR.
+# Uses a stable branch name (auto/bump-openclaw) so the PR persists across versions.
+
 name: Check Upstream Release
 run-name: "Check upstream release${{ github.event_name == 'workflow_dispatch' && ' (manual)' || '' }}"
 
@@ -13,16 +20,26 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 env:
   UPSTREAM_REPO: openclaw/openclaw
+  BUMP_BRANCH: auto/bump-openclaw
 
 jobs:
   check:
     name: Check for New Release
     runs-on: ubuntu-latest
+    outputs:
+      needs_update: ${{ steps.compare.outputs.needs_update }}
+      pr_number: ${{ steps.pr.outputs.number }}
+      origin_version: ${{ steps.pr.outputs.origin_version }}
+      tag: ${{ steps.upstream.outputs.tag }}
+      already_bumped: ${{ steps.check_branch.outputs.already_bumped }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Get current version
         id: current
@@ -70,24 +87,56 @@ jobs:
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Bump and push branch
+      - name: Check if branch already bumped to this version
         if: steps.compare.outputs.needs_update == 'true'
+        id: check_branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.upstream.outputs.tag }}
+          VERSION: ${{ steps.upstream.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # Check if the bump branch exists and already has this version
+          if git ls-remote --exit-code origin "refs/heads/${{ env.BUMP_BRANCH }}" >/dev/null 2>&1; then
+            git fetch origin "${{ env.BUMP_BRANCH }}"
+            BRANCH_VERSION=$(git show "origin/${{ env.BUMP_BRANCH }}:charts/openclaw/Chart.yaml" \
+              | grep '^appVersion:' | awk '{print $2}' | tr -d '"')
+            if [ "$BRANCH_VERSION" = "$VERSION" ]; then
+              echo "Branch already bumped to ${VERSION} — skipping push"
+              echo "already_bumped=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Branch exists at ${BRANCH_VERSION}, will update to ${VERSION}"
+              echo "already_bumped=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "Branch does not exist — will create"
+            echo "already_bumped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump and push branch
+        if: steps.compare.outputs.needs_update == 'true' && steps.check_branch.outputs.already_bumped != 'true'
+        env:
+          TAG: ${{ steps.upstream.outputs.tag }}
+          VERSION: ${{ steps.upstream.outputs.version }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "auto/bump-openclaw-${{ steps.upstream.outputs.tag }}" origin/main
-          ./scripts/bump-version.sh "${{ steps.upstream.outputs.version }}" --bump-chart
-          git add -A
-          git commit -m "chore: bump openclaw to ${{ steps.upstream.outputs.tag }}
 
-          Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${{ steps.upstream.outputs.tag }}
+          git checkout -B "${{ env.BUMP_BRANCH }}" origin/main
+          ./scripts/bump-version.sh "$VERSION" --bump-chart
+          git add -A
+          git commit -m "chore: bump openclaw to ${TAG}
+
+          Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG}
 
           Co-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          git push --force-with-lease origin "auto/bump-openclaw-${{ steps.upstream.outputs.tag }}"
+          git push --force origin "${{ env.BUMP_BRANCH }}"
 
       - name: Create or update PR
         if: steps.compare.outputs.needs_update == 'true'
+        id: pr
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT: ${{ steps.current.outputs.version }}
@@ -95,54 +144,68 @@ jobs:
         run: |
           set -euo pipefail
 
-          BRANCH="auto/bump-openclaw-${TAG}"
-
-          # ── Clean up merged auto-bump branches ───────────────────
+          # ── Clean up old version-specific branches (legacy) ─────
           git fetch origin --prune
-          for remote_branch in $(git branch -r | grep 'origin/auto/bump-openclaw-' | sed 's|origin/||'); do
-            if gh pr view "$remote_branch" --json state --jq '.state' 2>/dev/null | grep -q "MERGED"; then
+          for remote_branch in $(git branch -r | grep 'origin/auto/bump-openclaw-v' | sed 's|origin/||'); do
+            LEGACY_PR=$(gh pr list --head "$remote_branch" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
+            if [ -n "$LEGACY_PR" ]; then
+              gh pr close "$LEGACY_PR" --comment "Migrated to stable branch: ${{ env.BUMP_BRANCH }}" --delete-branch 2>/dev/null || true
+            else
               git push origin --delete "$remote_branch" 2>/dev/null || true
             fi
           done
+
+          # ── Determine origin version ────────────────────────────
+          EXISTING_PR=$(gh pr list --head "${{ env.BUMP_BRANCH }}" --state open \
+            --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_PR" ]; then
+            # Extract origin version from existing PR description
+            PR_BODY_TEXT=$(gh pr view "$EXISTING_PR" --json body --jq '.body')
+            ORIGIN_VERSION=$(echo "$PR_BODY_TEXT" | grep -oP '(?<=\*\*Origin\*\*: `v)[^`]+' || echo "$CURRENT")
+          else
+            ORIGIN_VERSION="$CURRENT"
+          fi
+
+          echo "origin_version=$ORIGIN_VERSION" >> "$GITHUB_OUTPUT"
 
           PR_BODY="## Summary
 
           Automated version bump from upstream release.
 
-          - **Current**: \`v${CURRENT}\`
-          - **New**: \`${TAG}\`
+          - **Origin**: \`v${ORIGIN_VERSION}\`
+          - **Latest**: \`${TAG}\`
           - **Release**: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG}
 
           > Created automatically by the [check-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow."
 
           # ── Create or update PR ──────────────────────────────────
-          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
-
           if [ -n "$EXISTING_PR" ]; then
             echo "Updating existing PR #${EXISTING_PR}"
             gh pr edit "$EXISTING_PR" \
-              --title "chore: bump openclaw to ${TAG}" \
+              --title "chore: bump openclaw v${ORIGIN_VERSION} → ${TAG}" \
               --body "$PR_BODY"
+            echo "number=$EXISTING_PR" >> "$GITHUB_OUTPUT"
           else
             gh pr create \
               --title "chore: bump openclaw to ${TAG}" \
               --body "$PR_BODY" \
-              --head "$BRANCH" \
+              --head "${{ env.BUMP_BRANCH }}" \
               --base main
-            EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+            PR_NUMBER=$(gh pr list --head "${{ env.BUMP_BRANCH }}" --state open \
+              --json number --jq '.[0].number')
+            echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           fi
 
-          # ── Close superseded PRs for older versions ──────────────
-          OLD_PRS=$(gh pr list --state open --json number,headRefName \
-            --jq "[.[] | select(.headRefName | startswith(\"auto/bump-openclaw-\")) | select(.headRefName != \"${BRANCH}\") | .number] | .[]")
-          if [ -n "$OLD_PRS" ]; then
-            for pr in $OLD_PRS; do
-              echo "Closing superseded PR #${pr}"
-              gh pr close "$pr" --comment "Superseded by newer version: ${TAG}" --delete-branch || true
-            done
-          fi
+      - name: Post release notes comment
+        if: steps.compare.outputs.needs_update == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.upstream.outputs.tag }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          set -euo pipefail
 
-          # ── Add release notes comment (deduped) ──────────────────
           RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
             --jq '.body // empty' 2>/dev/null || true)
 
@@ -151,16 +214,14 @@ jobs:
             COMMENT="### Release Notes for ${TAG}
 
           ${RELEASE_NOTES}"
-            # Only post once — prevent duplicate comments on every cron run
-            ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${EXISTING_PR}/comments" \
+            # Only post once — prevent duplicate comments on retry
+            ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
               | jq --arg v "### Release Notes for ${TAG}" '[.[] | select(.body | contains($v))] | length' \
               | awk '{s+=$1} END{print s}')
             if [ "$ALREADY_COMMENTED" = "0" ]; then
-              gh pr comment "$EXISTING_PR" --body "$COMMENT"
+              gh pr comment "$PR_NUMBER" --body "$COMMENT"
             fi
           fi
-
-          echo "Done: PR for openclaw ${TAG}"
 
       - name: Summary
         if: always()
@@ -168,11 +229,26 @@ jobs:
           NEEDS_UPDATE: ${{ steps.compare.outputs.needs_update }}
           CURRENT: ${{ steps.current.outputs.version }}
           TAG: ${{ steps.upstream.outputs.tag }}
+          ALREADY_BUMPED: ${{ steps.check_branch.outputs.already_bumped }}
         run: |
-          if [ "$NEEDS_UPDATE" = "true" ]; then
+          if [ "$NEEDS_UPDATE" = "true" ] && [ "$ALREADY_BUMPED" = "true" ]; then
+            echo "### :white_check_mark: openclaw: PR already exists for ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$NEEDS_UPDATE" = "true" ]; then
             echo "### :arrow_up: openclaw: v${CURRENT} → ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$NEEDS_UPDATE" = "false" ]; then
             echo "### :white_check_mark: openclaw: up to date (v${CURRENT})" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### :warning: openclaw: update check did not complete" >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  analyze:
+    name: Claude Upgrade Analysis
+    needs: check
+    if: needs.check.outputs.needs_update == 'true' && needs.check.outputs.pr_number != ''
+    uses: ./.github/workflows/claude-upgrade-analysis.yml
+    with:
+      pr_number: ${{ needs.check.outputs.pr_number }}
+      origin_version: ${{ needs.check.outputs.origin_version }}
+      new_tag: ${{ needs.check.outputs.tag }}
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
