@@ -133,10 +133,13 @@ jobs:
 
           Co-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
 
-          # Use --force-with-lease with explicit expected SHA for safety.
-          # The check_branch step already fetched the remote, so the ref is current.
-          EXPECTED_SHA="$(git rev-parse "origin/${{ env.BUMP_BRANCH }}" 2>/dev/null || echo '0000000000000000000000000000000000000000')"
-          git push --force-with-lease="${{ env.BUMP_BRANCH }}:${EXPECTED_SHA}" origin "${{ env.BUMP_BRANCH }}"
+          # Safe push: force-with-lease when updating existing branch, normal push for new branch
+          if git rev-parse --verify "origin/${{ env.BUMP_BRANCH }}" >/dev/null 2>&1; then
+            EXPECTED_SHA="$(git rev-parse --verify "origin/${{ env.BUMP_BRANCH }}")"
+            git push --force-with-lease="${{ env.BUMP_BRANCH }}:${EXPECTED_SHA}" origin "${{ env.BUMP_BRANCH }}"
+          else
+            git push origin "${{ env.BUMP_BRANCH }}"
+          fi
 
       - name: Create or update PR
         if: steps.compare.outputs.needs_update == 'true'
