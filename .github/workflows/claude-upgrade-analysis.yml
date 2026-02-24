@@ -94,10 +94,11 @@ jobs:
           DIFF=$(gh pr diff "$PR_NUMBER" 2>/dev/null || git diff origin/main...HEAD)
           echo "$DIFF" > /tmp/pr-diff.txt
 
-          # Get upstream release notes
+          # Get upstream release notes (escape @mentions to avoid pinging users)
           RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
             --jq '.body // empty' 2>/dev/null || true)
-          echo "${RELEASE_NOTES:-No release notes available.}" > /tmp/release-notes.txt
+          RELEASE_NOTES=$(echo "${RELEASE_NOTES:-No release notes available.}" | sed 's/@\([a-zA-Z0-9_-]\)/`@\1`/g')
+          echo "$RELEASE_NOTES" > /tmp/release-notes.txt
 
           # Get prior analysis comments from this PR (for cumulative context)
           gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \

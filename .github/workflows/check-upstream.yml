@@ -211,6 +211,8 @@ jobs:
             --jq '.body // empty' 2>/dev/null || true)
 
           if [ -n "$RELEASE_NOTES" ]; then
+            # Escape @mentions to avoid pinging unaffiliated GitHub users
+            RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed 's/@\([a-zA-Z0-9_-]\)/`@\1`/g')
             RELEASE_NOTES="${RELEASE_NOTES:0:10000}"
             COMMENT="### Release Notes for ${TAG}
 
