@@ -1,6 +1,6 @@
 # Analyzes upstream openclaw version bumps for fork-specific upgrade impact.
 # Called by check-upstream.yml after a version-bump PR is created or updated.
-# Posts a single comprehensive comment (no inline suggestions) per version.
+# Posts a single comprehensive comment covering ALL missed versions.
 # Can also be triggered manually to re-analyze an existing PR.
 
 name: Claude Upgrade Analysis
@@ -21,6 +21,11 @@ on:
         description: New upstream version tag (e.g. v2026.2.22)
         required: true
         type: string
+      missed_tags:
+        description: JSON array of all missed version tags, ascending (e.g. '["v2026.2.22","v2026.2.23"]')
+        required: false
+        type: string
+        default: "[]"
     secrets:
       anthropic_api_key:
         required: true
@@ -39,9 +44,14 @@ on:
         description: Upstream version tag (e.g. v2026.2.22)
         required: true
         type: string
+      missed_tags:
+        description: JSON array of missed tags (e.g. '["v2026.2.22","v2026.2.23"]')
+        required: false
+        type: string
+        default: "[]"
 
 concurrency:
-  group: claude-upgrade-${{ inputs.pr_number }}-${{ inputs.new_tag }}
+  group: claude-upgrade-${{ inputs.pr_number }}
   cancel-in-progress: true
 
 jobs:
@@ -87,6 +97,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.new_tag }}
+          MISSED_TAGS: ${{ inputs.missed_tags }}
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           set -euo pipefail
@@ -98,11 +109,27 @@ jobs:
           DIFF=$(gh pr diff "$PR_NUMBER" 2>/dev/null || git diff origin/main...HEAD)
           echo "$DIFF" > /tmp/pr-diff.txt
 
-          # Get upstream release notes (escape @mentions to avoid pinging users)
-          RELEASE_NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${TAG}" \
-            --jq '.body // empty' 2>/dev/null || true)
-          RELEASE_NOTES=$(echo "${RELEASE_NOTES:-No release notes available.}" | sed 's/@\([a-zA-Z0-9_-]\+\)/`@\1`/g')
-          echo "$RELEASE_NOTES" > /tmp/release-notes.txt
+          # Resolve tags to fetch: use missed_tags if non-empty, otherwise fall back to new_tag
+          TAGS_TO_FETCH=$(echo "$MISSED_TAGS" | jq -r 'if length > 0 then .[] else empty end' 2>/dev/null || true)
+          if [ -z "$TAGS_TO_FETCH" ]; then
+            TAGS_TO_FETCH="$TAG"
+          fi
+
+          # Fetch release notes for ALL missed versions
+          > /tmp/release-notes.txt
+          echo "$TAGS_TO_FETCH" | while read -r RTAG; do
+            [ -z "$RTAG" ] && continue
+            echo "=== Release Notes: ${RTAG} ===" >> /tmp/release-notes.txt
+            NOTES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases/tags/${RTAG}" \
+              --jq '.body // empty' 2>/dev/null || true)
+            NOTES=$(echo "${NOTES:-No release notes available.}" | sed 's/@\([a-zA-Z0-9_-]\+\)/`@\1`/g')
+            echo "$NOTES" >> /tmp/release-notes.txt
+            echo "" >> /tmp/release-notes.txt
+          done
+
+          VERSION_COUNT=$(echo "$TAGS_TO_FETCH" | grep -c . || echo 0)
+          echo "version_count=$VERSION_COUNT" >> "$GITHUB_OUTPUT"
+          echo "Gathered release notes for ${VERSION_COUNT} version(s)"
 
           # Get prior analysis comments from this PR (for cumulative context)
           gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
@@ -130,6 +157,7 @@ jobs:
             - **Upstream repo**: ${{ env.UPSTREAM_REPO }}
             - **Origin version** (currently on main): v${{ inputs.origin_version }}
             - **New version**: ${{ inputs.new_tag }}
+            - **Versions covered**: ${{ inputs.missed_tags }}
             - **PR**: #${{ inputs.pr_number }}
 
             ## What this fork customizes
@@ -142,7 +170,7 @@ jobs:
             ## Your task
 
             1. Read the PR diff at `/tmp/pr-diff.txt` to see what changed in this version bump
-            2. Read the upstream release notes at `/tmp/release-notes.txt`
+            2. Read the upstream release notes at `/tmp/release-notes.txt` — this file contains release notes for ALL missed versions (delimited by `=== Release Notes: <tag> ===` headers). Analyze the cumulative impact across all versions.
             3. If prior analyses exist, read `/tmp/prior-analyses.txt` for cumulative context
             4. Examine the fork's customizations: `Dockerfile`, `charts/openclaw/templates/`, `charts/openclaw/values.yaml`
             5. Determine upgrade impact:
@@ -164,8 +192,9 @@ jobs:
               ## Upgrade Analysis: v${{ inputs.origin_version }} → ${{ inputs.new_tag }}
 
             Then include these sections:
+            - **Versions covered**: list all versions from ${{ inputs.missed_tags }}
             - **Verdict**: one of [Clean Upgrade | Action Required | Breaking Changes]
-            - **Upstream Changes (relevant to this fork)**: bullet list of changes that could affect this fork
+            - **Upstream Changes (relevant to this fork)**: bullet list of changes that could affect this fork, organized by version if multiple versions are covered
             - **Fork Impact**: what needs to change in this fork, or "No fork changes required — clean upgrade"
             - **Recommendations**: numbered list of actions, or "None — merge when ready"
 
@@ -175,12 +204,14 @@ jobs:
         if: always()
         env:
           TAG: ${{ inputs.new_tag }}
+          MISSED_TAGS: ${{ inputs.missed_tags }}
           SKIPPED: ${{ steps.dedup.outputs.skip }}
         run: |
           set -euo pipefail
+          MISSED_COUNT=$(echo "${MISSED_TAGS:-[]}" | jq 'length' 2>/dev/null || echo 0)
           echo "## Claude Upgrade Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version**: ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version**: ${TAG} (${MISSED_COUNT} version(s) covered)" >> "$GITHUB_STEP_SUMMARY"
           echo "**PR**: #${{ inputs.pr_number }}" >> "$GITHUB_STEP_SUMMARY"
           if [ "$SKIPPED" = "true" ]; then
             echo "**Status**: Skipped (already analyzed)" >> "$GITHUB_STEP_SUMMARY"
