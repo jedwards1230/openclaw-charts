@@ -67,6 +67,9 @@ spec:
             - |
               mkdir -p {{ .Values.homePath }}/.openclaw
               envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
+              # Ensure secure permissions on auth-profiles.json if it exists
+              mkdir -p {{ .Values.homePath }}/.openclaw/agents
+              find {{ .Values.homePath }}/.openclaw/agents -name "auth-profiles.json" -exec chmod 600 {} \;
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
               [credential]
                 helper = !gh auth git-credential
