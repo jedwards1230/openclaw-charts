@@ -127,7 +127,7 @@ jobs:
             echo "" >> /tmp/release-notes.txt
           done
 
-          VERSION_COUNT=$(echo "$TAGS_TO_FETCH" | grep -c . || echo 1)
+          VERSION_COUNT=$(echo "$TAGS_TO_FETCH" | grep -c . || echo 0)
           echo "version_count=$VERSION_COUNT" >> "$GITHUB_OUTPUT"
           echo "Gathered release notes for ${VERSION_COUNT} version(s)"
 
@@ -208,7 +208,7 @@ jobs:
           SKIPPED: ${{ steps.dedup.outputs.skip }}
         run: |
           set -euo pipefail
-          MISSED_COUNT=$(echo "${MISSED_TAGS:-[]}" | jq 'length' 2>/dev/null || echo 1)
+          MISSED_COUNT=$(echo "${MISSED_TAGS:-[]}" | jq 'length' 2>/dev/null || echo 0)
           echo "## Claude Upgrade Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Version**: ${TAG} (${MISSED_COUNT} version(s) covered)" >> "$GITHUB_STEP_SUMMARY"

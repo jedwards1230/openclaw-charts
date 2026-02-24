@@ -58,7 +58,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Fetch all non-prerelease, non-draft releases (paginated, up to 100)
+          # Fetch all non-prerelease, non-draft releases (paginated)
           ALL_RELEASES=$(gh api "repos/${{ env.UPSTREAM_REPO }}/releases" \
             --paginate --jq '[.[] | select(.prerelease == false and .draft == false)] | .[].tag_name' \
             2>/dev/null || true)
@@ -80,7 +80,7 @@ jobs:
                && [ "$ver" != "$CURRENT_VERSION" ]; then
               echo "$tag"
             fi
-          done | sort -t. -k1,1n -k2,2n -k3,3n)
+          done | sort -V)
 
           if [ -z "$NEWER_TAGS" ]; then
             echo "No newer versions found"
@@ -95,7 +95,7 @@ jobs:
           LATEST_VERSION="${LATEST_TAG#v}"
 
           # Build JSON array of all missed tags (ascending order)
-          MISSED_JSON=$(echo "$NEWER_TAGS" | jq -R . | jq -sc .)
+          MISSED_JSON=$(echo "$NEWER_TAGS" | jq -R -s 'split("\n") | map(select(length > 0))')
 
           echo "tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
           echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
