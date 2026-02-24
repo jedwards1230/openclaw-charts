@@ -51,6 +51,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write
     env:
       UPSTREAM_REPO: openclaw/openclaw
     steps:
@@ -112,9 +113,8 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key || secrets.ANTHROPIC_API_KEY }}
-          model: claude-sonnet-4-6
-          direct_prompt: true
           claude_args: |
+            --model claude-sonnet-4-6
             --max-turns 10
             --allowedTools "Bash(gh pr comment:*),Bash(cat:*),Read,Glob,Grep"
           prompt: |
