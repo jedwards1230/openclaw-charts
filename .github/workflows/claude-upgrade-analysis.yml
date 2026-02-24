@@ -51,7 +51,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
+      id-token: write # Required by claude-code-action for OIDC GitHub token exchange
     env:
       UPSTREAM_REPO: openclaw/openclaw
     steps:
@@ -62,11 +62,12 @@ jobs:
           TAG: ${{ inputs.new_tag }}
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
+          set -euo pipefail
           MARKER="## Upgrade Analysis: v${{ inputs.origin_version }} → ${TAG}"
           ALREADY_POSTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
             | jq --arg v "$MARKER" '[.[] | select(.body | contains($v))] | length' \
             | awk '{s+=$1} END{print s}')
-          if [ "$ALREADY_POSTED" != "0" ]; then
+          if [ "${ALREADY_POSTED:-0}" -gt 0 ]; then
             echo "Analysis for ${TAG} already posted — skipping"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
@@ -90,6 +91,9 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Ensure origin/main is current for accurate diffs
+          git fetch origin main:refs/remotes/origin/main || true
+
           # Get the diff
           DIFF=$(gh pr diff "$PR_NUMBER" 2>/dev/null || git diff origin/main...HEAD)
           echo "$DIFF" > /tmp/pr-diff.txt
@@ -105,19 +109,17 @@ jobs:
             | jq -r '[.[] | select(.body | contains("## Upgrade Analysis:"))] | .[-3:] | .[].body' \
             > /tmp/prior-analyses.txt 2>/dev/null || true
 
-          echo "diff_size=$(wc -l < /tmp/pr-diff.txt)" >> "$GITHUB_OUTPUT"
-          echo "has_prior=$([ -s /tmp/prior-analyses.txt ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
       - name: Run Claude Analysis
         if: steps.dedup.outputs.skip != 'true'
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
+          # workflow_dispatch uses repo secret directly; workflow_call passes it through
           anthropic_api_key: ${{ secrets.anthropic_api_key || secrets.ANTHROPIC_API_KEY }}
           claude_args: |
             --model claude-sonnet-4-6
             --max-turns 10
-            --allowedTools "Bash(gh pr comment:*),Bash(cat:*),Read,Glob,Grep"
+            --allowedTools "Bash(gh pr comment *),Read,Glob,Grep"
           prompt: |
             You are analyzing an upstream version bump for a **fork** of the openclaw project.
             Your job is to determine what changes (if any) this fork needs to accommodate the upgrade.
@@ -152,32 +154,19 @@ jobs:
 
             ## Output
 
-            Post a **single comment** on PR #${{ inputs.pr_number }} using `gh pr comment`.
+            Post a **single comment** on PR #${{ inputs.pr_number }} using:
+              gh pr comment ${{ inputs.pr_number }} --body "..."
+
             Do NOT post inline comments or suggestions. Do NOT output review text as conversation messages.
 
-            The comment MUST follow this exact format:
+            The comment MUST start with this exact header (using actual version numbers):
+              ## Upgrade Analysis: v${{ inputs.origin_version }} → ${{ inputs.new_tag }}
 
-            ```
-            ## Upgrade Analysis: v<origin> → <new_tag>
-
-            ### Verdict: [Clean Upgrade | Action Required | Breaking Changes]
-
-            <1-2 sentence summary>
-
-            ### Upstream Changes (relevant to this fork)
-
-            <bullet list of changes that could affect this fork, with links to upstream if available>
-            <skip items that are purely upstream internal and don't affect the fork>
-
-            ### Fork Impact
-
-            <for each affected file, describe what needs to change and why>
-            <if no changes needed, say "No fork changes required — clean upgrade">
-
-            ### Recommendations
-
-            <numbered list of specific actions, or "None — merge when ready">
-            ```
+            Then include these sections:
+            - **Verdict**: one of [Clean Upgrade | Action Required | Breaking Changes]
+            - **Upstream Changes (relevant to this fork)**: bullet list of changes that could affect this fork
+            - **Fork Impact**: what needs to change in this fork, or "No fork changes required — clean upgrade"
+            - **Recommendations**: numbered list of actions, or "None — merge when ready"
 
             Be concise. Focus on actionable information. If it's a clean upgrade, say so clearly.
 
@@ -187,6 +176,7 @@ jobs:
           TAG: ${{ inputs.new_tag }}
           SKIPPED: ${{ steps.dedup.outputs.skip }}
         run: |
+          set -euo pipefail
           echo "## Claude Upgrade Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "**Version**: ${TAG}" >> "$GITHUB_STEP_SUMMARY"
@@ -201,7 +191,7 @@ jobs:
               RESULT=$(jq -r 'last | .subtype // "unknown"' "$EXEC_FILE" 2>/dev/null || echo "unknown")
               COST=$(jq -r 'last | .total_cost_usd // "?"' "$EXEC_FILE" 2>/dev/null || echo "?")
               DURATION=$(jq -r 'last | .duration_ms // 0' "$EXEC_FILE" 2>/dev/null || echo "0")
-              DURATION_S=$(echo "scale=1; ${DURATION} / 1000" | bc 2>/dev/null || echo "?")
+              DURATION_S=$(( DURATION / 1000 )) 2>/dev/null || DURATION_S="?"
 
               echo "" >> "$GITHUB_STEP_SUMMARY"
               echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"

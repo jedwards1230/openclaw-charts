@@ -21,7 +21,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
-  id-token: write
+  id-token: write # Required by claude-code-action OIDC in the analyze job
 
 env:
   UPSTREAM_REPO: openclaw/openclaw
@@ -133,7 +133,11 @@ jobs:
           Upstream release: https://github.com/${{ env.UPSTREAM_REPO }}/releases/tag/${TAG}
 
           Co-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          git push --force origin "${{ env.BUMP_BRANCH }}"
+
+          # Use --force-with-lease with explicit expected SHA for safety.
+          # The check_branch step already fetched the remote, so the ref is current.
+          EXPECTED_SHA="$(git rev-parse "origin/${{ env.BUMP_BRANCH }}" 2>/dev/null || echo '0000000000000000000000000000000000000000')"
+          git push --force-with-lease="${{ env.BUMP_BRANCH }}:${EXPECTED_SHA}" origin "${{ env.BUMP_BRANCH }}"
 
       - name: Create or update PR
         if: steps.compare.outputs.needs_update == 'true'
@@ -147,23 +151,27 @@ jobs:
 
           # ── Clean up old version-specific branches (legacy) ─────
           git fetch origin --prune
-          for remote_branch in $(git branch -r | grep 'origin/auto/bump-openclaw-v' | sed 's|origin/||'); do
+          while IFS= read -r remote_branch; do
+            [ -z "$remote_branch" ] && continue
             LEGACY_PR=$(gh pr list --head "$remote_branch" --state open --json number --jq '.[0].number // empty' 2>/dev/null || true)
             if [ -n "$LEGACY_PR" ]; then
               gh pr close "$LEGACY_PR" --comment "Migrated to stable branch: ${{ env.BUMP_BRANCH }}" --delete-branch 2>/dev/null || true
             else
               git push origin --delete "$remote_branch" 2>/dev/null || true
             fi
-          done
+          done < <(git branch -r | grep 'origin/auto/bump-openclaw-v' | sed 's|origin/||' | xargs)
 
           # ── Determine origin version ────────────────────────────
           EXISTING_PR=$(gh pr list --head "${{ env.BUMP_BRANCH }}" --state open \
             --json number --jq '.[0].number // empty')
 
           if [ -n "$EXISTING_PR" ]; then
-            # Extract origin version from existing PR description
+            # Extract origin version from existing PR description (portable sed)
             PR_BODY_TEXT=$(gh pr view "$EXISTING_PR" --json body --jq '.body')
-            ORIGIN_VERSION=$(echo "$PR_BODY_TEXT" | grep -oP '(?<=\*\*Origin\*\*: `v)[^`]+' || echo "$CURRENT")
+            ORIGIN_VERSION=$(printf '%s\n' "$PR_BODY_TEXT" | sed -n 's/.*\*\*Origin\*\*: `v\([^`]*\)`.*/\1/p' | head -n1)
+            if [ -z "$ORIGIN_VERSION" ]; then
+              ORIGIN_VERSION="$CURRENT"
+            fi
           else
             ORIGIN_VERSION="$CURRENT"
           fi
@@ -199,7 +207,7 @@ jobs:
           fi
 
       - name: Post release notes comment
-        if: steps.compare.outputs.needs_update == 'true'
+        if: success() && steps.compare.outputs.needs_update == 'true' && steps.pr.outputs.number != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.upstream.outputs.tag }}
@@ -221,7 +229,7 @@ jobs:
             ALREADY_COMMENTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
               | jq --arg v "### Release Notes for ${TAG}" '[.[] | select(.body | contains($v))] | length' \
               | awk '{s+=$1} END{print s}')
-            if [ "$ALREADY_COMMENTED" = "0" ]; then
+            if [ "${ALREADY_COMMENTED:-0}" -eq 0 ]; then
               gh pr comment "$PR_NUMBER" --body "$COMMENT"
             fi
           fi
