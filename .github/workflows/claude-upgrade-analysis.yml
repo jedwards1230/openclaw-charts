@@ -119,7 +119,7 @@ jobs:
           claude_args: |
             --model claude-sonnet-4-6
             --max-turns 10
-            --allowedTools "Bash(cat *),Bash(head *),Bash(gh pr comment *),Read,Glob,Grep"
+            --allowedTools "Bash(cat *),Bash(head *),Bash(gh pr comment *),Read,Write,Glob,Grep"
           prompt: |
             You are analyzing an upstream version bump for a **fork** of the openclaw project.
             Your job is to determine what changes (if any) this fork needs to accommodate the upgrade.
@@ -154,8 +154,8 @@ jobs:
 
             ## Output
 
-            Post a **single comment** on PR #${{ inputs.pr_number }} using:
-              gh pr comment ${{ inputs.pr_number }} --body "..."
+            Write your comment to `/tmp/analysis-comment.md`, then post it using:
+              gh pr comment ${{ inputs.pr_number }} --body-file /tmp/analysis-comment.md
 
             Do NOT post inline comments or suggestions. Do NOT output review text as conversation messages.
             Do NOT mention any GitHub usernames (e.g. @someone) in your comment — they are upstream contributors unaffiliated with this fork and will get unwanted notifications.
