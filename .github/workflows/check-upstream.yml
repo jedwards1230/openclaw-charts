@@ -204,7 +204,11 @@ jobs:
               --head "${{ env.BUMP_BRANCH }}" \
               --base main
             PR_NUMBER=$(gh pr list --head "${{ env.BUMP_BRANCH }}" --state open \
-              --json number --jq '.[0].number')
+              --json number --jq '.[0].number // empty')
+            if [ -z "$PR_NUMBER" ]; then
+              echo "::error::Failed to determine PR number after creation"
+              exit 1
+            fi
             echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           fi
 
@@ -252,7 +256,7 @@ jobs:
           ALREADY_BUMPED: ${{ steps.check_branch.outputs.already_bumped }}
         run: |
           if [ "$NEEDS_UPDATE" = "true" ] && [ "$ALREADY_BUMPED" = "true" ]; then
-            echo "### :white_check_mark: openclaw: PR already exists for ${TAG}" >> "$GITHUB_STEP_SUMMARY"
+            echo "### :white_check_mark: openclaw: branch already up to date with ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$NEEDS_UPDATE" = "true" ]; then
             echo "### :arrow_up: openclaw: v${CURRENT} → ${TAG}" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$NEEDS_UPDATE" = "false" ]; then

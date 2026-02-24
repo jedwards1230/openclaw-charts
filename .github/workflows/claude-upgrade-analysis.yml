@@ -63,9 +63,9 @@ jobs:
           PR_NUMBER: ${{ inputs.pr_number }}
         run: |
           set -euo pipefail
-          MARKER="## Upgrade Analysis: v${{ inputs.origin_version }} → ${TAG}"
+          MARKER="## Upgrade Analysis:.*${TAG}"
           ALREADY_POSTED=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments" \
-            | jq --arg v "$MARKER" '[.[] | select(.body | contains($v))] | length' \
+            | jq --arg v "$MARKER" '[.[] | select(.body | test($v))] | length' \
             | awk '{s+=$1} END{print s}')
           if [ "${ALREADY_POSTED:-0}" -gt 0 ]; then
             echo "Analysis for ${TAG} already posted — skipping"
