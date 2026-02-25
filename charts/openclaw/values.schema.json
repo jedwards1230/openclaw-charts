@@ -102,6 +102,16 @@
           "properties": {
             "allowInsecureAuth": {
               "type": "boolean"
+            },
+            "dangerouslyDisableDeviceAuth": {
+              "type": "boolean"
+            },
+            "allowedOrigins": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed origins for Control UI (required when gateway.bind is non-loopback)"
             }
           },
           "additionalProperties": true

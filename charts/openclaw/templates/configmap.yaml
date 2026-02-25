@@ -16,6 +16,9 @@ data:
   {{- if .Values.gateway.controlUi.dangerouslyDisableDeviceAuth }}
   {{- $_ := set $gatewayControlUi "dangerouslyDisableDeviceAuth" true }}
   {{- end }}
+  {{- if .Values.gateway.controlUi.allowedOrigins }}
+  {{- $_ := set $gatewayControlUi "allowedOrigins" .Values.gateway.controlUi.allowedOrigins }}
+  {{- end }}
   {{- $gateway := dict "bind" .Values.gateway.bind "port" (int64 .Values.gateway.port) "auth" $gatewayAuth "controlUi" $gatewayControlUi }}
   {{- if .Values.gateway.trustedProxies }}
   {{- $_ := set $gateway "trustedProxies" .Values.gateway.trustedProxies }}
