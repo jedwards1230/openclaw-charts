@@ -48,6 +48,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 | `gateway.port` | Gateway listen port | `18789` |
 | `gateway.bind` | Network binding | `lan` |
 | `gateway.controlUi.allowInsecureAuth` | Allow non-HTTPS auth for control UI | `false` |
+| `gateway.controlUi.allowedOrigins` | Allowed origins for Control UI (required for non-loopback bind) | `[]` |
 | `config` | Freeform openclaw.json config (agents, channels, tools, etc.) | `{}` |
 | `webhookd.enabled` | Enable GitHub webhook HMAC verification sidecar | `false` |
 | `networkPolicy.enabled` | Enable Kubernetes NetworkPolicy | `false` |

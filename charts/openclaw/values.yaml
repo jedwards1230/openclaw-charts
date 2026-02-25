@@ -35,6 +35,10 @@ gateway:
     # ⚠️ SEVERE SECURITY DOWNGRADE — disables per-device pairing for the web UI.
     # Use only as a temporary recovery option when locked out. Revert immediately after.
     dangerouslyDisableDeviceAuth: false
+    # -- Allowed origins for the Control UI (required when gateway.bind is non-loopback).
+    # List of origin URLs that are permitted to connect to the Control UI.
+    # Example: ["https://openclaw.example.com"]
+    allowedOrigins: []
   # -- Trusted proxy IP addresses or CIDR ranges for X-Forwarded-For trust.
   # Required when auth.mode="trusted-proxy" with bind="loopback".
   # When running behind an ingress controller (e.g. Traefik), add the controller's
