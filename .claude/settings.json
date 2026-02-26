@@ -34,5 +34,22 @@
         "repo": "ccplugins/marketplace"
       }
     }
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/chart-version-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/helm-lint-check.sh"
+          }
+        ]
+      }
+    ]
   }
 }
