@@ -92,6 +92,14 @@ spec:
         - protocol: TCP
           port: 11434
     {{- end }}
+    {{- if .Values.networkPolicy.discord.voice.enabled }}
+    # Allow UDP egress for Discord voice channels (@discordjs/voice uses dynamic ports)
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.discord.voice.cidr | default "0.0.0.0/0" }}
+      ports:
+        - protocol: UDP
+    {{- end }}
     {{- if .Values.networkPolicy.allowOtel }}
     # OTEL collector (traces, metrics, logs)
     - to:
