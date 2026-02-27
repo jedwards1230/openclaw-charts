@@ -340,6 +340,15 @@ networkPolicy:
   # on a LAN box, remote host, or in-cluster and the chart cannot know your topology.
   # Restrict this to your LAN subnet (e.g. "192.168.1.0/24") for tighter egress control.
   ollamaCIDR: "0.0.0.0/0"
+  # -- Discord voice channel support. Requires UDP egress to Discord voice servers
+  # on dynamic ports. Only needed when channels.discord.voice is enabled.
+  discord:
+    voice:
+      # -- Enable UDP egress for Discord voice connections
+      enabled: false
+      # -- CIDR range for Discord voice server egress. Default allows any destination.
+      # Discord voice servers use various IPs, so broad access is typically needed.
+      cidr: "0.0.0.0/0"
   # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
   allowOtel: false
 
