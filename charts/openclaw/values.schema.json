@@ -622,6 +622,10 @@
         "kubeAPICIDR": {
           "type": "string",
           "description": "CIDR for Kubernetes API server"
+        },
+        "kubeAPIPort": {
+          "type": "integer",
+          "description": "Port for Kubernetes API server (default 6443)"
         }
       },
       "additionalProperties": false

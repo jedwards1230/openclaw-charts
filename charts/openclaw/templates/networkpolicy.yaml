@@ -104,10 +104,10 @@ spec:
     # Allow access to Kubernetes API server (in-cluster kubectl)
     - to:
         - ipBlock:
-            cidr: {{ .Values.networkPolicy.kubeAPICIDR | default "10.43.0.1/32" }}
+            cidr: {{ .Values.networkPolicy.kubeAPICIDR | default "0.0.0.0/0" }}
       ports:
         - protocol: TCP
-          port: 443
+          port: {{ .Values.networkPolicy.kubeAPIPort | default 6443 }}
     {{- end }}
     {{- if .Values.networkPolicy.allowOtel }}
     # OTEL collector (traces, metrics, logs)
