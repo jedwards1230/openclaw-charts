@@ -354,7 +354,8 @@ networkPolicy:
   # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
   allowOtel: false
   allowKubeAPI: false
-  kubeAPICIDR: "10.43.0.1/32"
+  kubeAPICIDR: "0.0.0.0/0"
+  kubeAPIPort: 6443
 
 # -- Extra volume mounts for the main container
 # Example:
