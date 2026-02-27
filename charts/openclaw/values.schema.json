@@ -614,6 +614,14 @@
             }
           },
           "additionalProperties": false
+        },
+        "allowKubeAPI": {
+          "type": "boolean",
+          "description": "Allow egress to Kubernetes API server for in-cluster kubectl access"
+        },
+        "kubeAPICIDR": {
+          "type": "string",
+          "description": "CIDR for Kubernetes API server"
         }
       },
       "additionalProperties": false

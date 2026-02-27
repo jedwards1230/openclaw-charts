@@ -353,6 +353,8 @@ networkPolicy:
       cidr: "0.0.0.0/0"
   # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
   allowOtel: false
+  allowKubeAPI: false
+  kubeAPICIDR: "10.43.0.1/32"
 
 # -- Extra volume mounts for the main container
 # Example:
