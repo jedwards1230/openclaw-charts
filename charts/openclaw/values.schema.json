@@ -395,6 +395,10 @@
         },
         "name": {
           "type": "string"
+        },
+        "automountToken": {
+          "type": "boolean",
+          "description": "Whether to automount the service account token in the pod"
         }
       },
       "additionalProperties": false

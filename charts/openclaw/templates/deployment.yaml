@@ -44,7 +44,7 @@ spec:
         {{- end }}
     spec:
       serviceAccountName: {{ include "openclaw.serviceAccountName" . }}
-      automountServiceAccountToken: false
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountToken | default false }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
