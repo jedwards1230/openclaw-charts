@@ -588,6 +588,28 @@
         "allowOtel": {
           "type": "boolean",
           "description": "Allow egress to OTEL collector in monitoring namespace (TCP/4317, TCP/4318)"
+        },
+        "discord": {
+          "type": "object",
+          "description": "Discord-specific network policy settings",
+          "properties": {
+            "voice": {
+              "type": "object",
+              "description": "Discord voice channel UDP egress settings",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable UDP egress for Discord voice connections"
+                },
+                "cidr": {
+                  "type": "string",
+                  "description": "CIDR range for Discord voice server egress"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
