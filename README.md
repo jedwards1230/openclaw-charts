@@ -24,7 +24,7 @@ Builds from the official [openclaw/openclaw](https://github.com/openclaw/opencla
 docker build -t openclaw .
 
 # Pin a specific version
-docker build --build-arg OPENCLAW_VERSION=v2026.2.24 -t openclaw .
+docker build --build-arg OPENCLAW_VERSION=v2026.2.26 -t openclaw .
 ```
 
 ## Helm Chart
