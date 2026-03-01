@@ -98,7 +98,7 @@ RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} \
 RUN pnpm install --frozen-lockfile
 
 # Discord voice: encryption lib (pure JS, no native deps) + rebuild native opus addon
-RUN pnpm add libsodium-wrappers \
+RUN pnpm add -w libsodium-wrappers \
     && pnpm rebuild @discordjs/opus
 RUN OPENCLAW_A2UI_SKIP_MISSING=1 pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
