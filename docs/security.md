@@ -24,11 +24,7 @@
 
 **Image tags** — The default `image.tag` is `latest`. For production, pin to a specific version tag (e.g., `v2026.3.1`) from the [releases page](https://github.com/jedwards1230/openclaw-charts/releases).
 
-**`envsubst` init container** — Uses `dibi/envsubst:1` by default. Pin to a specific digest for maximum supply-chain safety:
-```yaml
-envsubst:
-  image: dibi/envsubst:1@sha256:<digest>
-```
+**Config init container** — Uses `busybox:1.37` to copy the config template to the writable volume. OpenClaw resolves `${VAR_NAME}` references natively from environment variables at load time.
 
 ## Playwright / Chrome Headless Shell
 
