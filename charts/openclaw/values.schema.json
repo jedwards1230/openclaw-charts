@@ -194,16 +194,6 @@
       "type": "string",
       "description": "Home directory path inside the container"
     },
-    "envsubst": {
-      "type": "object",
-      "description": "Envsubst init container image configuration",
-      "properties": {
-        "image": {
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
     "secrets": {
       "type": "object",
       "description": "Secrets configuration",
@@ -652,7 +642,7 @@
     },
     "extraInitContainers": {
       "type": "array",
-      "description": "Extra init containers (in addition to envsubst and tailscale-init)",
+      "description": "Extra init containers (in addition to config-init and tailscale-init)",
       "items": {
         "type": "object"
       }

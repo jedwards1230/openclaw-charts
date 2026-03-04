@@ -110,13 +110,6 @@ nodeOptions: "--max-old-space-size=1536"
 # -- Home directory path inside the container
 homePath: "/home/node"
 
-# -- Envsubst init container image (runs as non-root, must include envsubst binary)
-# SECURITY: This container receives all secret environment variables at pod startup.
-# Pin to a versioned tag or digest for supply-chain safety — avoid :latest in production.
-# Example digest pin: dibi/envsubst:1@sha256:<digest>
-envsubst:
-  image: dibi/envsubst:1
-
 # -- Secrets configuration
 secrets:
   existingSecret: ""
@@ -382,7 +375,7 @@ extraVolumeMounts: []
 #         claimName: openclaw-dev-workspace
 extraVolumes: []
 
-# -- Extra init containers (in addition to the built-in envsubst and tailscale-init)
+# -- Extra init containers (in addition to the built-in config-init and tailscale-init)
 # Example:
 #   extraInitContainers:
 #     - name: wait-for-db

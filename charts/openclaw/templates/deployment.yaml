@@ -58,25 +58,23 @@ spec:
       {{- end }}
 
       initContainers:
-        # Envsubst init container to inject secrets into config
-        - name: envsubst
-          image: {{ .Values.envsubst.image }}
+        # Copy config template to writable volume and set up git credentials.
+        # OpenClaw resolves ${VAR_NAME} references natively at load time from
+        # the container's environment — no envsubst preprocessing needed.
+        - name: config-init
+          image: busybox:1.37
           command:
             - sh
             - -c
             - |
               mkdir -p {{ .Values.homePath }}/.openclaw
-              envsubst < /config-template/openclaw.json > {{ .Values.homePath }}/.openclaw/openclaw.json
-              # Ensure secure permissions on auth-profiles.json if it exists
+              cp /config-template/openclaw.json {{ .Values.homePath }}/.openclaw/openclaw.json
               mkdir -p {{ .Values.homePath }}/.openclaw/agents
               find {{ .Values.homePath }}/.openclaw/agents -name "auth-profiles.json" -exec chmod 600 {} \;
               cat > {{ .Values.homePath }}/.openclaw/.gitconfig <<'GITCONF'
               [credential]
                 helper = !gh auth git-credential
               GITCONF
-          envFrom:
-            - secretRef:
-                name: {{ include "openclaw.secretName" . }}
           volumeMounts:
             - name: config-template
               mountPath: /config-template

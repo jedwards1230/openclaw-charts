@@ -73,7 +73,7 @@ Published to `ghcr.io/jedwards1230/openclaw-charts`.
 ### Helm Chart (`charts/openclaw/`)
 
 **Key templates:**
-- `deployment.yaml` — Main pod with envsubst init container for secret injection, optional Tailscale + webhookd sidecars
+- `deployment.yaml` — Main pod with config-init container, optional Tailscale + webhookd sidecars; OpenClaw resolves `${VAR}` natively from env vars
 - `configmap.yaml` — Dynamically generates `openclaw.json` by merging `gateway.*` values with `config` values; auto-appends plugin repo paths
 - `configmap-webhookd.yaml` — Node.js sidecar that verifies GitHub webhook HMAC signatures before forwarding to the gateway
 - `configmap-tailscale.yaml` — Tailscale sidecar startup script
