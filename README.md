@@ -58,6 +58,8 @@ See [`charts/openclaw/values.yaml`](charts/openclaw/values.yaml) for the full re
 
 Value profiles for common setups: [`values-development.yaml`](charts/openclaw/values-development.yaml), [`values-production.yaml`](charts/openclaw/values-production.yaml).
 
+For detailed setup guides (GitHub App auth, Tailscale, webhookd, plugin repos, NetworkPolicy), see [`docs/configuration.md`](docs/configuration.md). For security hardening, see [`docs/security.md`](docs/security.md).
+
 ## Version Bumping
 
 Upstream tracking is automated — a CI workflow checks for new releases every 6 hours and opens a PR. To bump manually:

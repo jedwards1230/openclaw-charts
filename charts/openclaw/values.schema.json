@@ -592,6 +592,7 @@
         "ingressController": {
           "type": "object",
           "description": "Ingress controller selection for NetworkPolicy ingress rules",
+          "required": ["namespace", "podSelector"],
           "properties": {
             "namespace": {
               "type": "string",
