@@ -64,6 +64,13 @@ jobs:
             exit 1
           fi
 
+          # Verify IMAGE_REVISION exists
+          IMAGE_REVISION=$(grep '^ARG IMAGE_REVISION=' Dockerfile | cut -d= -f2)
+          if [ -z "$IMAGE_REVISION" ]; then
+            echo "::error::Could not find ARG IMAGE_REVISION in Dockerfile"
+            exit 1
+          fi
+
           # Extract appVersion from Chart.yaml, strip quotes
           APP_VERSION=$(grep '^appVersion:' charts/openclaw/Chart.yaml \
             | awk '{print $2}' | tr -d '"')
@@ -86,4 +93,4 @@ jobs:
             exit 1
           fi
 
-          echo "✅ Versions in sync: Dockerfile=v$DOCKER_VERSION, Chart.yaml=$APP_VERSION"
+          echo "✅ Versions in sync: Dockerfile=v$DOCKER_VERSION (r$IMAGE_REVISION), Chart.yaml=$APP_VERSION"

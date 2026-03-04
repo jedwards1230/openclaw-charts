@@ -25,17 +25,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Get OpenClaw version
+      - name: Get OpenClaw version and revision
         id: versions
         run: |
           VERSION=$(grep '^ARG OPENCLAW_VERSION=' Dockerfile | cut -d= -f2)
+          REVISION=$(grep '^ARG IMAGE_REVISION=' Dockerfile | cut -d= -f2)
           if [ -z "$VERSION" ]; then
             echo "::error::Could not find ARG OPENCLAW_VERSION in Dockerfile"
             exit 1
           fi
+          if [ -z "$REVISION" ]; then
+            echo "::error::Could not find ARG IMAGE_REVISION in Dockerfile"
+            exit 1
+          fi
+          IMAGE_TAG="${VERSION}-r${REVISION}"
           echo "openclaw_version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=docker-${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "OpenClaw version: ${VERSION}"
+          echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "tag=docker-${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "OpenClaw version: ${VERSION}, revision: r${REVISION}, image tag: ${IMAGE_TAG}"
 
       - name: Check if release exists
         id: check
@@ -70,10 +78,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.versions.outputs.openclaw_version }}
+            ghcr.io/${{ github.repository }}:${{ steps.versions.outputs.image_tag }}
             ghcr.io/${{ github.repository }}:latest
           labels: |
-            org.opencontainers.image.version=${{ steps.versions.outputs.openclaw_version }}
+            org.opencontainers.image.version=${{ steps.versions.outputs.image_tag }}
           build-args: |
             OPENCLAW_VERSION=${{ steps.versions.outputs.openclaw_version }}
           cache-from: type=gha,scope=openclaw
@@ -98,6 +106,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          IMAGE_TAG="${{ steps.versions.outputs.image_tag }}"
           VERSION="${{ steps.versions.outputs.openclaw_version }}"
           TAG="${{ steps.versions.outputs.tag }}"
           UPSTREAM_NOTES=$(cat /tmp/upstream-notes.txt 2>/dev/null || true)
@@ -105,10 +114,11 @@ jobs:
           NOTES="## Docker Image
 
           \`\`\`bash
-          docker pull ghcr.io/${{ github.repository }}:${VERSION}
+          docker pull ghcr.io/${{ github.repository }}:${IMAGE_TAG}
           \`\`\`
 
-          Built on [OpenClaw ${VERSION}](https://github.com/openclaw/openclaw/releases/tag/${VERSION})."
+          - **OpenClaw**: [${VERSION}](https://github.com/openclaw/openclaw/releases/tag/${VERSION})
+          - **Image revision**: r${{ steps.versions.outputs.revision }}"
 
           if [ -n "$UPSTREAM_NOTES" ]; then
             # Wrap in quad-backtick code fence to prevent @mention notifications
@@ -125,7 +135,7 @@ jobs:
           fi
 
           gh release create "${TAG}" \
-            --title "Docker ${VERSION}" \
+            --title "Docker ${IMAGE_TAG}" \
             --notes "$NOTES" \
             --target "${{ github.sha }}"
 

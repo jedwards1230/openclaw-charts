@@ -39,9 +39,12 @@ fi
 
 echo "Bumping OpenClaw version: $CURRENT → $NEW_VERSION"
 
-# 1. Dockerfile — ARG OPENCLAW_VERSION=v<version>
+# 1. Dockerfile — ARG OPENCLAW_VERSION=v<version> and reset IMAGE_REVISION to 1
 sed -i "s|OPENCLAW_VERSION=v${CURRENT}|OPENCLAW_VERSION=v${NEW_VERSION}|g" \
   "$REPO_ROOT/Dockerfile"
+sed -i 's|^ARG IMAGE_REVISION=.*|ARG IMAGE_REVISION=1|' \
+  "$REPO_ROOT/Dockerfile"
+echo "Image revision reset to 1"
 
 # 2. Chart.yaml — appVersion: "<version>"
 sed -i "s|appVersion: \"${CURRENT}\"|appVersion: \"${NEW_VERSION}\"|" \
