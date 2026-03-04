@@ -32,11 +32,11 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
 ```bash
 # Install with custom values
 helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
-  --version 0.17.0 \
+  --version 0.17.1 \
   --values my-values.yaml
 
 # Or use the Docker image directly
-docker run ghcr.io/jedwards1230/openclaw-charts:v2026.3.1-r2
+docker run ghcr.io/jedwards1230/openclaw-charts:v2026.3.2-r1
 ```
 
 ### Configuration
@@ -65,8 +65,8 @@ For detailed setup guides (GitHub App auth, Tailscale, webhookd, plugin repos, N
 Upstream tracking is automated — a CI workflow checks for new releases every 6 hours and opens a PR. To bump manually:
 
 ```bash
-./scripts/bump-version.sh 2026.3.1           # Bump app version
-./scripts/bump-version.sh 2026.3.1 --bump-chart  # Also increment chart version
+./scripts/bump-version.sh 2026.3.2           # Bump app version
+./scripts/bump-version.sh 2026.3.2 --bump-chart  # Also increment chart version
 ```
 
 ## License
