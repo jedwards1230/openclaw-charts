@@ -332,6 +332,14 @@ podLabels: {}
 #   allowOtel      - OTEL collector in monitoring namespace (TCP/4317, TCP/4318)
 networkPolicy:
   enabled: false
+  # -- Ingress controller selection for NetworkPolicy ingress rules.
+  # Defaults to Traefik in kube-system. Override for other ingress controllers.
+  ingressController:
+    # -- Namespace where the ingress controller runs
+    namespace: kube-system
+    # -- Pod label selector for the ingress controller pods
+    podSelector:
+      app.kubernetes.io/name: traefik
   # -- Allow egress to mcp-proxy pods in the same namespace (TCP/8080).
   # Only enable for gateways that need MCP tool access.
   allowMcpProxy: false
@@ -351,8 +359,10 @@ networkPolicy:
       # -- CIDR range for Discord voice server egress. Default allows any destination.
       # Discord voice servers use various IPs, so broad access is typically needed.
       cidr: "0.0.0.0/0"
-  # -- Allow egress to OTEL collector in the monitoring namespace (TCP/4317 gRPC, TCP/4318 HTTP).
+  # -- Allow egress to OTEL collector (TCP/4317 gRPC, TCP/4318 HTTP).
   allowOtel: false
+  # -- Namespace where the OTEL collector runs (used when allowOtel=true).
+  otelNamespace: monitoring
   allowKubeAPI: false
   kubeAPICIDR: "0.0.0.0/0"
   kubeAPIPort: 6443

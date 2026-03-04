@@ -589,9 +589,28 @@
           "type": "string",
           "description": "CIDR range for Ollama egress. Only used when allowOllama=true. Restrict to your LAN subnet for tighter control (e.g. '192.168.1.0/24')."
         },
+        "ingressController": {
+          "type": "object",
+          "description": "Ingress controller selection for NetworkPolicy ingress rules",
+          "properties": {
+            "namespace": {
+              "type": "string",
+              "description": "Namespace where the ingress controller runs"
+            },
+            "podSelector": {
+              "type": "object",
+              "description": "Pod label selector for the ingress controller pods"
+            }
+          },
+          "additionalProperties": false
+        },
         "allowOtel": {
           "type": "boolean",
-          "description": "Allow egress to OTEL collector in monitoring namespace (TCP/4317, TCP/4318)"
+          "description": "Allow egress to OTEL collector (TCP/4317, TCP/4318)"
+        },
+        "otelNamespace": {
+          "type": "string",
+          "description": "Namespace where the OTEL collector runs (used when allowOtel=true)"
         },
         "discord": {
           "type": "object",

@@ -90,9 +90,7 @@ Published to `ghcr.io/jedwards1230/openclaw-charts`.
 |----------|---------|---------|
 | `pr-check.yml` | PR | Docker build + helm lint/template + ct lint |
 | `version-check.yml` | PR to main | Enforce Dockerfile ↔ Chart.yaml version sync |
-| `build.yml` | Dockerfile changes | Build + push Docker image to GHCR |
-| `helm-publish.yml` | Chart changes | Package + push Helm chart to OCI registry |
-| `release.yml` | Daily 02:00 UTC | Create GitHub releases (Docker + Helm) |
+| `release.yml` | Push to main + daily 02:00 UTC | Build + push Docker/Helm, create GitHub releases |
 | `check-upstream.yml` | Every 6 hours | Auto-detect new upstream releases, create bump PR |
 | `claude-upgrade-analysis.yml` | Called by check-upstream | Claude analysis of upgrade impact |
 

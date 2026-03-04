@@ -14,7 +14,7 @@ Uses Helm's fail function to halt deployment with clear error messages.
 {{/* Validate: secrets.onepassword.enabled requires itemPath */}}
 {{- if .Values.secrets.onepassword.enabled }}
 {{- if not .Values.secrets.onepassword.itemPath }}
-{{- fail "secrets.onepassword.enabled is true but secrets.onepassword.itemPath is empty. Provide the 1Password item path (e.g., vaults/homelab/items/k8s-hagen-openclaw-secrets)." }}
+{{- fail "secrets.onepassword.enabled is true but secrets.onepassword.itemPath is empty. Provide the 1Password item path (e.g., vaults/my-vault/items/k8s-openclaw-secrets)." }}
 {{- end }}
 {{- end }}
 
