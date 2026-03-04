@@ -71,6 +71,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.versions.outputs.openclaw_version }}
+            ghcr.io/${{ github.repository }}:latest
           labels: |
             org.opencontainers.image.version=${{ steps.versions.outputs.openclaw_version }}
           build-args: |
@@ -79,6 +80,19 @@ jobs:
           cache-to: type=gha,mode=max,scope=openclaw
           provenance: true
 
+      - name: Fetch upstream release notes
+        if: steps.check.outputs.exists == 'false'
+        id: upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.versions.outputs.openclaw_version }}"
+          NOTES=$(gh api "repos/openclaw/openclaw/releases/tags/${VERSION}" --jq '.body // empty' 2>/dev/null || true)
+          # Truncate to avoid exceeding release body limits
+          NOTES="${NOTES:0:10000}"
+          # Write to file to avoid shell quoting issues
+          echo "$NOTES" > /tmp/upstream-notes.txt
+
       - name: Create GitHub Release
         if: steps.check.outputs.exists == 'false'
         env:
@@ -86,9 +100,33 @@ jobs:
         run: |
           VERSION="${{ steps.versions.outputs.openclaw_version }}"
           TAG="${{ steps.versions.outputs.tag }}"
+          UPSTREAM_NOTES=$(cat /tmp/upstream-notes.txt 2>/dev/null || true)
+
+          NOTES="## Docker Image
+
+          \`\`\`bash
+          docker pull ghcr.io/${{ github.repository }}:${VERSION}
+          \`\`\`
+
+          Built on [OpenClaw ${VERSION}](https://github.com/openclaw/openclaw/releases/tag/${VERSION})."
+
+          if [ -n "$UPSTREAM_NOTES" ]; then
+            # Wrap in quad-backtick code fence to prevent @mention notifications
+            NOTES="${NOTES}
+
+          <details>
+          <summary>Upstream release notes</summary>
+
+          \`\`\`\`
+          ${UPSTREAM_NOTES}
+          \`\`\`\`
+
+          </details>"
+          fi
+
           gh release create "${TAG}" \
-            --title "Docker Image ${VERSION}" \
-            --notes "Docker image built on OpenClaw ${VERSION} (https://github.com/openclaw/openclaw/releases/tag/${VERSION}). Pull: docker pull ghcr.io/${{ github.repository }}:${VERSION}" \
+            --title "Docker ${VERSION}" \
+            --notes "$NOTES" \
             --target "${{ github.sha }}"
 
   helm-release:
@@ -147,6 +185,15 @@ jobs:
           APP_VERSION="${{ steps.versions.outputs.app_version }}"
           TAG="${{ steps.versions.outputs.tag }}"
           gh release create "${TAG}" \
-            --title "Helm Chart openclaw-${CHART_VERSION}" \
-            --notes "Helm chart openclaw version ${CHART_VERSION} for OpenClaw ${APP_VERSION}. Install: helm install openclaw oci://ghcr.io/${{ github.repository_owner }}/charts/openclaw --version ${CHART_VERSION}" \
+            --title "Helm Chart ${CHART_VERSION}" \
+            --notes "$(cat <<EOF
+          ## Helm Chart
+
+          \`\`\`bash
+          helm install openclaw oci://ghcr.io/${{ github.repository_owner }}/charts/openclaw --version ${CHART_VERSION}
+          \`\`\`
+
+          For OpenClaw \`${APP_VERSION}\`. See [values.yaml](https://github.com/${{ github.repository }}/blob/${TAG}/charts/openclaw/values.yaml) for configuration reference.
+          EOF
+          )" \
             --target "${{ github.sha }}"
