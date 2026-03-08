@@ -47,17 +47,16 @@ Three files must stay in sync — `version-check.yml` blocks PRs on mismatch:
 | File | Field | Example |
 |------|-------|---------|
 | `Dockerfile` | `ARG OPENCLAW_VERSION=v<version>` | `v2026.3.1` |
-| `Dockerfile` | `ARG IMAGE_REVISION=<n>` | `2` |
 | `charts/openclaw/Chart.yaml` | `appVersion: "<version>"` | `"2026.3.1"` |
 
 If chart templates or values change, `Chart.yaml` `version:` must also be bumped (patch increment). Use `./scripts/bump-version.sh <version> --bump-chart` to handle both.
 
 ### Docker Image Revision
 
-Docker images are tagged `v<openclaw-version>-r<revision>` (e.g., `v2026.3.1-r2`). The revision distinguishes Dockerfile/tooling changes from upstream OpenClaw version changes:
+Docker images are tagged `v<openclaw-version>-r<revision>` (e.g., `v2026.3.1-r2`). The revision is **auto-derived** from git — it counts commits touching the Dockerfile since the last `OPENCLAW_VERSION` change. No manual tracking needed:
 
-- **Upstream bump** → `bump-version.sh` resets `IMAGE_REVISION` to 1
-- **Tooling-only change** (e.g., updating a CLI version) → manually increment `IMAGE_REVISION`
+- **Upstream bump** → revision resets to 0 automatically (new version commit)
+- **Tooling-only change** (e.g., adding packages) → revision increments automatically on next commit
 - **Release tags** follow the pattern `docker-v2026.3.1-r2`
 
 ## Architecture

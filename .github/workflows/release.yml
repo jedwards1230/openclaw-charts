@@ -29,15 +29,23 @@ jobs:
         id: versions
         run: |
           VERSION=$(grep '^ARG OPENCLAW_VERSION=' Dockerfile | cut -d= -f2)
-          REVISION=$(grep '^ARG IMAGE_REVISION=' Dockerfile | cut -d= -f2)
           if [ -z "$VERSION" ]; then
             echo "::error::Could not find ARG OPENCLAW_VERSION in Dockerfile"
             exit 1
           fi
-          if [ -z "$REVISION" ]; then
-            echo "::error::Could not find ARG IMAGE_REVISION in Dockerfile"
-            exit 1
+
+          # Auto-derive revision: count commits touching Dockerfile since
+          # the last OPENCLAW_VERSION change. This eliminates manual bumps —
+          # any Dockerfile change automatically gets a new revision number.
+          VERSION_COMMIT=$(git log -1 --format=%H -S "OPENCLAW_VERSION=" -- Dockerfile)
+          if [ -n "$VERSION_COMMIT" ]; then
+            REVISION=$(git rev-list --count "${VERSION_COMMIT}..HEAD" -- Dockerfile)
+            # Include the version-change commit itself as r0
+          else
+            # Fallback: count all Dockerfile commits
+            REVISION=$(git rev-list --count HEAD -- Dockerfile)
           fi
+
           IMAGE_TAG="${VERSION}-r${REVISION}"
           echo "openclaw_version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "revision=${REVISION}" >> "$GITHUB_OUTPUT"
