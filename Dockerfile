@@ -89,7 +89,7 @@ RUN npm install -g --force corepack && corepack enable
 WORKDIR /app
 
 # Clone OpenClaw at pinned version and remove .git for smaller copy
-ARG OPENCLAW_VERSION=v2026.3.2
+ARG OPENCLAW_VERSION=v2026.3.7
 RUN git clone --depth 1 --branch ${OPENCLAW_VERSION} \
       https://github.com/openclaw/openclaw.git . \
     && rm -rf .git
