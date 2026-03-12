@@ -36,7 +36,7 @@ helm install openclaw oci://ghcr.io/jedwards1230/charts/openclaw \
   --values my-values.yaml
 
 # Or use the Docker image directly
-docker run ghcr.io/jedwards1230/openclaw-charts:v2026.3.8-r1
+docker run ghcr.io/jedwards1230/openclaw-charts:v2026.3.11-r1
 ```
 
 ### Configuration
