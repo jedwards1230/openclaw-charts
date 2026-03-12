@@ -2,8 +2,8 @@ apiVersion: v2
 name: openclaw
 description: Custom OpenClaw deployment — a multi-channel AI messaging gateway with bundled CLI tooling for agent workflows
 type: application
-version: 0.17.4
-appVersion: "2026.3.8"
+version: 0.17.5
+appVersion: "2026.3.11"
 kubeVersion: ">=1.28.0-0"
 home: https://github.com/jedwards1230/openclaw-charts
 maintainers:
